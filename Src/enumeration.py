@@ -35,7 +35,7 @@ The get_multibins function filters all bins with more than one exon. The functio
 def get_multibins(bins:list):
     multi_bins = []
     for bin in bins:
-        if len(bin.exons) > 1:
+        if len(bin.exons) > 1: # 2
             multi_bins.append(bin)
     return multi_bins
   
