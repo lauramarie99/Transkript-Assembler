@@ -24,13 +24,13 @@ def getCompatibleBins(act_Bins:list, actExon, prevExon):
     newActiveBins = []
     SuccInMultiBinsList = []
     for bin in act_Bins:
-        for j in range(1, len(bin[0])):                                                                                                                 # Suche nach Kompatiblen Bins
-            if bin[0][j] == actExon and bin[0][j-1] == prevExon:
+        for j in range(1, len(bin.exons)):                                                                                                                 # Suche nach Kompatiblen Bins
+            if bin.exons[j] == actExon and bin.exons[j-1] == prevExon:
                 compatibleBins.append(bin)
-                if j<len(bin[0])-1:
+                if j<len(bin.exons)-1:
                     newActiveBins.append(bin)                                                                                                           # Nutze den Schleifendurchlaf, um aktive Multibins schon 
                                                                                                                                                         # in newActiveBins zu schreiben
-                    SuccInMultiBinsList.append(bin[0][j+1])                                                                                             # Füge die Nachfolger des aktiven Exons in einem Multibin der 
+                    SuccInMultiBinsList.append(bin.exons[j+1])                                                                                             # Füge die Nachfolger des aktiven Exons in einem Multibin der 
                                                                                                                                                         # Liste SuccInMultiBinsList hinzu
     return compatibleBins, newActiveBins, SuccInMultiBinsList
 
@@ -38,16 +38,16 @@ def getCompatibleBins(act_Bins:list, actExon, prevExon):
 
 def getNewActiveBinsEasily (newActiveBins:list, Bins:list, act_Exon):
     for bin in Bins:    
-        if (bin[0][0])==act_Exon:
+        if (bin.exons[0])==act_Exon:
             newActiveBins.append(bin)
 
 def getNewActiveBinsWithMulitBinRestriction(newActiveBins, Bins, act_Exon, SuccInMultiBinsList):
     for bin in Bins:
-        if bin[0][0]==act_Exon:
-            if len(bin[0]) == 1: 
+        if bin.exons[0]==act_Exon:
+            if len(bin.exons) == 1: 
                 newActiveBins.append(bin)
             else: 
-                if bin[0][1] in SuccInMultiBinsList:             
+                if bin.exons[1] in SuccInMultiBinsList:             
                     newActiveBins.append(bin)
 
 def activeBinPathEnumeration(v:str, pfad:list, allpaths:dict, path_number:list, activeBins:list, graph, Bins:list):
@@ -65,7 +65,7 @@ def activeBinPathEnumeration(v:str, pfad:list, allpaths:dict, path_number:list, 
         if (len(compatibleBins)==0 and len(activeBins)>0):
             return
         if len(SuccInMultiBinsList) == 0:
-            getNewActiveMultiBinsEasily(newActiveBins, Bins, activeExonNumber)
+            getNewActiveBinsEasily(newActiveBins, Bins, activeExonNumber)
         else:
             getNewActiveBinsWithMulitBinRestriction(newActiveBins, Bins, activeExonNumber, SuccInMultiBinsList)        
     else:
@@ -79,7 +79,7 @@ def activeBinPathEnumeration(v:str, pfad:list, allpaths:dict, path_number:list, 
 def getMultiBins(Bins:list):
     multiBins = []
     for bin in Bins:
-        if len(bin[0])>2:
+        if len(bin.exons)>2:
             multiBins.append(bin)
     return multiBins
 
@@ -88,27 +88,22 @@ def getCompatibleMultiBins(act_Bins:list, actExon, prevExon):
     newActiveBins = []
     SuccInMultiBinsList = []
     for bin in act_Bins:
-        for j in range(1, len(bin[0])):                                                                                                                 # Suche nach Kompatiblen Bins
-            if bin[0][j] == actExon and bin[0][j-1] == prevExon:
+        for j in range(1, len(bin.exons)):                                                                                                                 # Suche nach Kompatiblen Bins
+            if bin.exons[j] == actExon and bin.exons[j-1] == prevExon:
                 compatibleBins.append(bin)
-                if j<len(bin[0])-1:
+                if j<len(bin.exons)-1:
                     newActiveBins.append(bin)                                                                                                           # Nutze den Schleifendurchlaf, um aktive Multibins schon 
                                                                                                                                                         # in newActiveBins zu schreiben
-                    SuccInMultiBinsList.append(bin[0][j+1])                                                                                             # Füge die Nachfolger des aktiven Exons in einem Multibin der 
+                    SuccInMultiBinsList.append(bin.exons[j+1])                                                                                             # Füge die Nachfolger des aktiven Exons in einem Multibin der 
                                                                                                                                                         # Liste SuccInMultiBinsList hinzu
     return compatibleBins, newActiveBins, SuccInMultiBinsList
 
-def getNewActiveMultiBinsEasily (newActiveBins:list, Bins:list, act_Exon):
-    for bin in Bins:    
-        if (bin[0][0])==act_Exon:
-            newActiveBins.append(bin)
-
 def getNewActiveMultiBinsWithMultiBinRestriction(newActiveBins, Bins, act_Exon, SuccInMultiBinsList):
     for bin in Bins:
-        if bin[0][0]==act_Exon and bin[0][1] in SuccInMultiBinsList:             
+        if bin.exons[0]==act_Exon and len(bin.exons)>1 and bin.exons[1] in SuccInMultiBinsList:             
             newActiveBins.append(bin)
 
-def activeMultiBinPathEnumeration(v:str, pfad:list, allpaths:dict, path_number:list, activeBins:list, graph, multiBins:list, counter:list):
+def activeMultiBinPathEnumeration(v:str, pfad:list, allpaths:dict, path_number:list, activeBins:list, graph, multiBins:list):
     if len(multiBins)==0:
         return fullPathEnumeration(v, pfad, allpaths, path_number, graph)
     else:
@@ -126,13 +121,12 @@ def activeMultiBinPathEnumeration(v:str, pfad:list, allpaths:dict, path_number:l
             if len(compatibleBins)==0 and len(activeBins)>0:
                 return
             if len(SuccInMultiBinsList) == 0:
-                getNewActiveMultiBinsEasily(newActiveBins, multiBins, activeExonNumber)
+                getNewActiveBinsEasily(newActiveBins, multiBins, activeExonNumber)
             else:
                 getNewActiveMultiBinsWithMultiBinRestriction(newActiveBins, multiBins, activeExonNumber, SuccInMultiBinsList)        
         else:
             newActiveBins=activeBins
         for u in graph.adj[str(v)].keys():
-            activeMultiBinPathEnumeration(u, pfad+[u], allpaths, path_number, newActiveBins, graph, multiBins, counter)
-    print(counter[0])
+            activeMultiBinPathEnumeration(u, pfad+[u], allpaths, path_number, newActiveBins, graph, multiBins)
     return allpaths
     
