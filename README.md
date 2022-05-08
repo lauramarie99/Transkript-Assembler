@@ -61,7 +61,7 @@ graph as described above.
 
 • Compare results for complete and pre-filtered splice graphs.
 
-## STEP 5: Interpretation and Further Reasearch
+## STEP 5: Interpretation and Further Research
 
 • Analyze and summarize the results of all workpackages.
 
