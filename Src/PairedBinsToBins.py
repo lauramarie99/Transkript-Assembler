@@ -13,10 +13,13 @@ def getBins(Bins:list):
 
 def fromPairedBinsToBins(pairedBins, Bins, graph, Exons:list):
     BinT = namedtuple('BinT', 'exons count')
-    binList = getBins(Bins)
+    # Lies Bins aus PairedBins
     for bin in pairedBins: 
         last_left_exon = bin.leftExons[len(bin.leftExons)-1]
         first_right_exon = bin.rightExons[0]
+
+        if (len(bin.leftExons)+ len(bin.rightExons)==2 and int(last_left_exon) + 1 == int(first_right_exon)):
+            break
         if first_right_exon >= last_left_exon:
             
             startNodeLastLeftExon = last_left_exon + 2
