@@ -13,41 +13,44 @@ def getBins(Bins:list):
 
 def fromPairedBinsToBins(pairedBins, Bins, graph, Exons:list):
     BinT = namedtuple('BinT', 'exons count')
-    # Lies Bins aus PairedBins
     counter = 0
+    # Read Bins from PairedBins
     for bin in pairedBins: 
+        #If this the first ListElement of PairedBins, create a List, to save all Bins, that have already been added
         if counter == 0:
             addedBins = []
             counter = 1
+        # Define LastExon of left Bins and FirstExon of RightBins
         real_last_left_exon = bin.leftExons[len(bin.leftExons)-1]
         real_first_right_exon = bin.rightExons[0]
-
-        last_left_exon = bin.leftExons[len(bin.leftExons)-1]
-        first_right_exon = bin.rightExons[0]
+        # Make a working-copy of these Exons 
+        last_left_exon = real_last_left_exon
+        first_right_exon = real_first_right_exon
+        #As long as last_left_exon is greater or equal to first_right_exon and there are at least two Elements in leftExons or rightExons
         while(last_left_exon >= first_right_exon and (len(bin.leftExons)>1 or len(bin.rightExons)>1)):
+            #If there at least two exons in leftExons
             if len(bin.leftExons)>1:
+                #Remove the last exon of leftExons and assign the new last exon of leftExons to the variable last_left_exon
                 bin.leftExons.remove(bin.leftExons[len(bin.leftExons)-1])
                 last_left_exon = bin.leftExons[len(bin.leftExons)-1]
+            # If there's only one Exon left in leftExons
             else:
+                # If there's more than one exon left in rightExons
                 if len(bin.rightExons)>1:
+                    #Remove the first eExon of rightExons and assign the new first exon of rightExons to the variable first_right_exon
                     bin.rightExons.remove(bin.rightExons[0])
                     first_right_exon = bin.rightExons[0]
+        # Write the remaing Exons in leftExons and rightExons in exonBin
         exonBin = bin.leftExons + bin.rightExons
-        
 
-        # if (len(bin.leftExons) + len(bin.rightExons)==2 and int(last_left_exon) + 1 == int(first_right_exon)):
-        #     break 
-        # if last_left_exon == first_right_exon:
-        #     if len(bin.leftExons)>=len(bin.rightExons):
-        #         exons = bin.leftExons + bin.rightExons[0:len(bin.rightExons)-2]
-
-        # if first_right_exon >= last_left_exon:
+        # If this particular exonBin has not been added to addedBin and real_last_left_exon>=realfirst_right_exon
         if exonBin not in addedBins and real_last_left_exon>=real_first_right_exon:
             startNodeLastLeftExon = real_last_left_exon + 2
             endNodeFirstRightExon = len(Exons)*2+1-real_first_right_exon 
             full_path_dict = PairedBinToBinEnumeration(str(startNodeLastLeftExon), str(endNodeFirstRightExon), [str(startNodeLastLeftExon)], {}, [0], graph)
+            #If at least one path between real_last_left_exon and real_first_right_exon has been found
             if full_path_dict != None:
-                for key, value in full_path_dict.items():
+                for value in full_path_dict.values():
                     if len(value)>2:
                         newBin = bin.leftExons + value[1:len(value)-2] + bin.rightExons
                     else:
@@ -56,14 +59,12 @@ def fromPairedBinsToBins(pairedBins, Bins, graph, Exons:list):
                     for bin1 in Bins:
                         if newBin == bin1.exons:
                             newBinBoolean = False
-                            if counter > 1:
-                                break
-                             
-                    # Add all new Bins implied from Paired Bins to Bins
+                            break
+                    # Add all new Bins implied from PairedBins to AddedBins
                     addedBins.append(newBin)
-                    if newBinBoolean==True:
+                    # If this Bin is not already in Bins
+                    if newBin and newBinBoolean==True:
                         Bins.append(BinT(exons=newBin, count={}))
-                        
     return Bins
             
 def PairedBinToBinEnumeration (v:str, endNode:str, pfad:list, allpaths:dict, path_number:list, graph):  
