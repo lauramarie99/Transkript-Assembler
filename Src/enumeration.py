@@ -42,8 +42,8 @@ def get_multibins(bins:list):
 # ENUMERATION_BINS FUNCTION
 """
 The enumeration_bins function considers only paths with corresponding bins. 
-The bins list contains all bins with more than one exon. 
-In the beginning all bins (> 1 exon) are handed over (act_bins=bins)
+The bins list contains all bins with more than two exons. 
+In the beginning all bins (> 2 exons) are handed over (act_bins=bins)
 """
 def enumeration_bins(graph,transkripts:list,node:str,path:list,act_bins:list,bins:list):
     
@@ -51,38 +51,39 @@ def enumeration_bins(graph,transkripts:list,node:str,path:list,act_bins:list,bin
         transkripts.append(parse_graph_new.nodepath_to_transcript(graph,path))
         return
     else:
-        succ = list(graph.adj[node])
+        succ = list(graph.adj[node]) # succ contains all successor nodes
         for n in succ:
-            # Change active bin composition if there is a splice junction
-            if graph.edges[node,n]['type'] == "SpliceJunction":
-                start_exon = graph.edges[node,n]["startExon"]
-                end_exon = graph.edges[node,n]["endExon"]
+            
+            if graph.edges[node,n]['type'] == "SpliceJunction": # check if there's a splice junction (we would reach a new exon and have to check for compatibility!)
+                start_exon = graph.edges[node,n]["startExon"] # start Exon 
+                end_exon = graph.edges[node,n]["endExon"] # end Exon
                 
-                # Check if there are compatible bins
-                new_bins = []
-                valid = False
+                new_bins = [] # stores all active bins, which contain the start node followed by the end node and at least one more exon 
+                valid = False # checks if there are compatible bins: Active bins, which contain start and end exon, and the start_exon is not the first exon of the bin.
+                other_bins = False # checks if there are active bins, which contain the start exon followed by another exon (not end exon!), and the start_exon is not the first exon of the bin.
+                
                 for bin1 in act_bins:
                     for i in range(0,(len(bin1.exons)-1)):
                         if (start_exon == bin1.exons[i]) and (end_exon == bin1.exons[i+1]):
-                            valid = True
-                            if (i != (len(bin1.exons)-2)):
+                            if (i != 0):
+                                valid = True
+                            if (i != len(bin1.exons)-2):
                                 new_bins.append(bin1)
+                        elif ((start_exon == bin1.exons[i]) and (i != 0)):
+                            other_bins = True
 
-                # If there are no compatible bins, stop execution of this path
-                if valid == False:
+                # If there are no compatible bins, but other active multi-bins, stop execution of this path
+                if ((valid == False) and (other_bins == True)):
                     continue
 
-                # Get all new bins
+                # Get all new bins starting with the end exon
                 new_bins = get_bins(bins,new_bins,end_exon)
-                  
+            
             # If the edge represents helper edge or exon edge, the bin composition is not changed
             else:
                 new_bins = act_bins
 
-            # follow the path
+            # Follow the path
             enumeration_bins(graph,transkripts,n,(path + [n]),new_bins,bins)          
             
     return transkripts
-
-
-
