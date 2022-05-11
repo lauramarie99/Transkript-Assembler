@@ -1,7 +1,7 @@
 """
 This is an example for the enumeration function with bin constraint. 
 As input file, a graph file with one single gene is used.
-The function enumeration_bins considers only paths with corresponding bins.
+The function enumeration_bins considers paths with corresponding multi-bins.
 """
 
 # IMPORT
