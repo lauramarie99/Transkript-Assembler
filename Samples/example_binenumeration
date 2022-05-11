@@ -42,7 +42,7 @@ with open("/home/laura/Documents/Transkript_Assembly/data/human_geuvadis/test3.g
 
         multi_bins = path_enumeration.get_multibins(Bins) # Filter all bins with more than two exons
         
-        transkripts_bins = path_enumeration.enumeration_bins(G_clean,transkripts_bins,"0",["0"],multi_bins,multi_bins) # Enumeration with bin-constraint
+        transkripts_bins = path_enumeration.enumeration_bins(G_clean,transkripts_bins,"0",["0"],[],multi_bins) # Enumeration with bin-constraint
         print("Transkripts with bin-constraint:",len(transkripts_bins),transkripts_bins)
 
         transkripts = path_enumeration.enumeration(G_clean,transkripts,"0",["0"]) # Normal enumeration
