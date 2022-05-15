@@ -37,8 +37,8 @@ with open("/home/laura/Documents/Transkript_Assembly/data/human_geuvadis/test3.g
 
         # PATH ENUMERATION OF GRAPH
 
-        transkripts_bins1 = [] # All transkripts obtained by "normal" enumeration function
-        transkripts_bins2 = [] # All transkripts obtained by enumeration function with bin constraint
+        transkripts_bins1 = [] # All transkripts obtained by enumeration function 1
+        transkripts_bins2 = [] # All transkripts obtained by enumeration function 2
 
         multi_bins = path_enumeration.get_multibins(Bins) # Filter all bins with more than two exons
         
@@ -47,6 +47,8 @@ with open("/home/laura/Documents/Transkript_Assembly/data/human_geuvadis/test3.g
 
         transkripts_bins2 = path_enumeration.enumeration_bins2(G_clean,transkripts_bins2,"0",["0"],[],multi_bins) # Function 2
         print("Transkripts for function 2:",len(transkripts_bins2),transkripts_bins2)
+        
+        # The results should be the same!
         
 
 f.close()
