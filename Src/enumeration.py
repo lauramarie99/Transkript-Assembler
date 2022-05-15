@@ -129,7 +129,7 @@ def enumeration_bins2(graph,transkripts:list,node:str,path:list,act_bins:list,bi
                 new_bins = act_bins
 
             # Follow the path
-            enumeration_bins(graph,transkripts,n,(path + [n]),new_bins,bins)          
+            enumeration_bins2(graph,transkripts,n,(path + [n]),new_bins,bins)          
             
     return transkripts
 
