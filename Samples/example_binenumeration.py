@@ -37,16 +37,16 @@ with open("/home/laura/Documents/Transkript_Assembly/data/human_geuvadis/test3.g
 
         # PATH ENUMERATION OF GRAPH
 
-        transkripts = [] # All transkripts obtained by "normal" enumeration function
-        transkripts_bins = [] # All transkripts obtained by enumeration function with bin constraint
+        transkripts_bins1 = [] # All transkripts obtained by "normal" enumeration function
+        transkripts_bins2 = [] # All transkripts obtained by enumeration function with bin constraint
 
         multi_bins = path_enumeration.get_multibins(Bins) # Filter all bins with more than two exons
         
-        transkripts_bins = path_enumeration.enumeration_bins(G_clean,transkripts_bins,"0",["0"],[],multi_bins) # Enumeration with bin-constraint
-        print("Transkripts with bin-constraint:",len(transkripts_bins),transkripts_bins)
+        transkripts_bins1 = path_enumeration.enumeration_bins(G_clean,transkripts_bins1,"0",["0"],multi_bins,multi_bins) # Function 1
+        print("Transkripts for function 1:",len(transkripts_bins1),transkripts_bins1)
 
-        transkripts = path_enumeration.enumeration(G_clean,transkripts,"0",["0"]) # Normal enumeration
-        print("Transkripts:",len(transkripts),transkripts)
+        transkripts_bins2 = path_enumeration.enumeration_bins2(G_clean,transkripts_bins2,"0",["0"],[],multi_bins) # Function 2
+        print("Transkripts for function 2:",len(transkripts_bins2),transkripts_bins2)
         
 
 f.close()
