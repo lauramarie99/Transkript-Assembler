@@ -1,9 +1,9 @@
 Testdurchläufe mit human_geuvadis_simulated_5sets.graph (Clean Graph):
     • Normale Enumeration: 97598 Transkripte, 27s
-    • Bin Constraint: 83814 Transkripte, 29s
-    • Paired Bins: 80387 Transkripte, 35s
+    • Bin Constraint: 82832 Transkripte, 29s (beide Versionen)
+    • Paired Bins: 
  
 Testdurchläufe mit human_geuvadis_simulated_5sets.graph (Full Graph):
     • Normale Enumeration: 19293622 Transkripte, 37min
-    • Bin Constraint: 7625860 Transkripte, 17 min
-    • Paired Bins: 5458836 Transkripte, 17 min
+    • Bin Constraint: ? Transkripte, ? min
+    • Paired Bins: 
