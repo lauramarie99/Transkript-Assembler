@@ -24,7 +24,7 @@ def MyEnu(Graph, Transcript, Path, Node):
         print(Transcript)
 
 
-#working progress, does not correctly yet
+#working progress, does not work correctly yet
 def EnuBinConstraint (Graph, Transcript, Path, Node, Bin):
     if Node == "1":
         Transcript.append(Parsing.nodepath_to_transcript(Graph,Path))
