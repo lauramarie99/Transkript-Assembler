@@ -37,7 +37,7 @@ def getMultiBins(Bins:list):
 # Full Path Enumeration
 def fullPathEnumeration(v:str, pfad:list, allpaths:dict, path_number:list, graph):  
     if v == '1':                                                                                                        # If current is drain, return current path
-        allpaths[path_number[0]] = nodepath_to_transcript(graph, pfad)                                                  # Write current path transcribed into a transcript in to the 
+        allpaths[path_number[0]] = pfad                                                                                 # Write current path transcribed into a transcript in to the 
                                                                                                                         # allPath-Dictionary
         path_number[0] = path_number[0] + 1                                                                             # Increase PathNumber by one
         return
@@ -101,7 +101,6 @@ def activeBinPathEnumeration2(v:str, pfad:list, allpaths:dict, path_number:list,
             activeExonNumber=graph.edges[v, u]['endExon']                                                                   # Define beginning of the edge as previousExonNumber 
             previousExonNumber=graph.edges[v,u]['startExon']                                                                # Define end of the edge as ActiveExonNumbger
             newActiveBins = []                                                                                              # Make a new empty List for the newActiveBins
-            SuccInMultiBinsList = []                                                                                        # Make a new List for Successors in MultiBins
             compatibleBinBoolean = False                                                                                    # Define a new Boolean to check for compatible Bins in all ActiveBins
             potentiallyConflictingBinBoolean = False                                                                        # Define a secondBoolean, to check whether there are conflicting Booleans with 
                                                                                                                             # the ones compatible to the current path (e. g. CurrentPath: 1->2->4, currentActiveBoolean 2,4,7;
@@ -169,16 +168,15 @@ def activeBinPathEnumeration3(v:str, pfad:list, allpaths:dict, path_number:list,
                             
             if compatibleBinListBoolean == False and len(activeBins)>0:                                                 # If there are no compatible Bins, but the ActiveBinList was not empty
                 continue                                                                                                # Skip this path
-            for bin1 in Bins:
-                if len(bin1.exons)>1:                                                                                   # Check all Bins for newActive Bins.
-                    if bin1.exons[1] == activeExonNumber and bin1.exons[0] == previousExonNumber:                       # newly added bins to NewActiveBins are defined as such:
-                        if len(bin1.exons)>2:                                                                           # 1. first Exon of the Bin is the beginning of the currently checked edge (PreviousExonNumber)
+            for bin1 in Bins:                                                                                           # Check all Bins for newActive Bins.
+                if len(bin1.exons)>2 and bin1.exons[1] == activeExonNumber and bin1.exons[0] == previousExonNumber:     # newly added bins to NewActiveBins are defined as such:
+                    newActiveBins.append(bin1)                                                                          # 1. first Exon of the Bin is the beginning of the currently checked edge (PreviousExonNumber)
                                                                                                                         # 2. second Exon of the Bin is the end of the currently checked edge (ActiveExonNumber)
-                            newActiveBins.append(bin1)                                                                  # If these criteria are met, add the bin to newActiveBins   
-                else:
-                    if bin1.exons[0] == activeExonNumber:                                                           
-                        newActiveBins.append(bin1)                                                                                            
-                                                                                                                        
+                                                                                                                        # If these criteria are met, add the bin to newActiveBins   
+                # """ else:
+                #     if bin1.exons[0] == activeExonNumber:                                                           
+                #         newActiveBins.append(bin1)                                                                                            
+                #  """                                                                                                        
         else:                                                                                                           # If EdgeType is no SpliceJunctions
             newActiveBins=activeBins                                                                                    # all formerly activeBins are newActiveBins
         activeBinPathEnumeration3(u, pfad+[u], allpaths, path_number, newActiveBins, graph, Bins)                       # call ActiveBinPathEnumeration for the current node

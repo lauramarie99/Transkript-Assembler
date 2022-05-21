@@ -1,9 +1,9 @@
 import sys, ast, os
 import networkx as nx
 from collections import namedtuple
-from PathEnumeration import activeBinPathEnumeration, activeBinPathEnumeration2, activeBinPathEnumeration3, getMultiBins
+from PathEnumeration import fullPathEnumeration, activeBinPathEnumeration, activeBinPathEnumeration2, activeBinPathEnumeration3, getMultiBins
 from PathEnumeration_old import activeMultiBinPathEnumeration
-from PairedBinsToBins import fromPairedBinsToBins
+from PairedBinsToBins import fromPairedBinsToBins, checkPairedBins
 from parse_graph_list_commented_Arbeitsdatei import parse_meta, parse_bins, parse_pairs, parse_graph, write_valid_gtf_entry, nodepath_to_transcript
 
 dummyf = open("dummyout.gtf", "w")                                                                                              # output for the dummy code
@@ -13,11 +13,12 @@ with open('human_geuvadis_simulated_5sets.graph') as f:
     fileEndReached = False
     f.readline()                                                                                                     #skip ---- seperator line
     global_path_dict = {}
-    global_path_dict_multi = {}
+    #global_path_dict_multi = {}
     global_path_dict_full = {}
     gene_counter=0
     anzahlPfade = 0
-    anzahlPfade_multi=0                                                                                                   
+    #anzahlPfade_multi=0                                                                                                   
+    #anzahlPfade_full=0
     while not fileEndReached:
         f.readline()                                                                                                # skip ==META: Read this line, but don't do anything
         Chromosome, Strand, Exons = parse_meta(f)                                                                   # Übergib f jetzt an def parse_meta, um Metadaten auszulesen und schreib diese in Chromosome, 
@@ -36,25 +37,28 @@ with open('human_geuvadis_simulated_5sets.graph') as f:
             fileEndReached, _ = parse_graph(f, G_clean, Exons)
 
         local_path_dict = {}
-        local_path_dict_multi={}
-        local_path_dict_full = {}
+        #local_path_dict_multi={}
+        #local_path_dict_full = {}
         pfad = ['0']
-        pfad_multi = ['0']
+        #pfad_multi = ['0']
         pfad_full = ['0']
         path_number = [0]
-        path_number_multi = [0]
-        path_number_full = [0]
+        #path_number_multi = [0]
+        #path_number_full = [0]
         zaehler = [0]
         MultiBins = getMultiBins(Bins)
-        MultiBins = fromPairedBinsToBins (PairedBins, MultiBins, G_clean, Exons)
-        Bins = fromPairedBinsToBins (PairedBins, Bins, G_clean, Exons)
-        #global_path_dict['Gene' + str(gene_counter)] = activeBinPathEnumeration2('0', pfad, local_path_dict, path_number, Bins, G_clean, Bins)
+        MultiBins, newMultiBins = fromPairedBinsToBins (PairedBins, MultiBins, G_clean, Exons)
+        #Bins = fromPairedBinsToBins (PairedBins, Bins, G_clean, Exons)
+        #incorrectPairedBins = checkPairedBins(PairedBins)
+        #Bins, newMultiBins = fromPairedBinsToBins (PairedBins, Bins, G_clean, Exons)
+        #global_path_dict['Gene' + str(gene_counter)] = activeBinPathEnumeration3('0', pfad, local_path_dict, path_number, [], G_full, Bins)
         global_path_dict['Gene' + str(gene_counter)] = activeBinPathEnumeration3('0', pfad, local_path_dict, path_number, [], G_clean, MultiBins)        
         #global_path_dict_multi['Gene' + str(gene_counter)] = activeMultiBinPathEnumeration('0', pfad_multi, local_path_dict_multi, path_number_multi, MultiBins, G_clean, MultiBins)
-        #global_path_dict_full['Gene' + str(gene_counter)] = Enumeration.fullPathEnumeration('0', pfad_full, local_path_dict_full, path_number_full)
+        #global_path_dict_full['Gene' + str(gene_counter)] = fullPathEnumeration('0', pfad_full, local_path_dict_full, path_number_full, G_full)
         gene_counter = gene_counter + 1
         anzahlPfade = anzahlPfade + path_number[0]
-        anzahlPfade_multi = anzahlPfade_multi + path_number_multi[0]
+        #anzahlPfade_full = anzahlPfade_full + path_number_full[0]
+        #anzahlPfade_multi = anzahlPfade_multi + path_number_multi[0]
         # All Paths Enumeration
 
         # Note: source and drain are ALWAYS named "0" and "1" respectively
@@ -80,5 +84,4 @@ with open('human_geuvadis_simulated_5sets.graph') as f:
         dummyGeneCounter = dummyGeneCounter + 1
 
 dummyf.close()
-print(anzahlPfade_multi)
 print(anzahlPfade)
