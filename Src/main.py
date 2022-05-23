@@ -48,11 +48,11 @@ with open('human_geuvadis_simulated_5sets.graph') as f:
         zaehler = [0]
         MultiBins = getMultiBins(Bins)
         MultiBins, newMultiBins = fromPairedBinsToBins (PairedBins, MultiBins, G_clean, Exons)
-        #Bins = fromPairedBinsToBins (PairedBins, Bins, G_clean, Exons)
-        #incorrectPairedBins = checkPairedBins(PairedBins)
-        #Bins, newMultiBins = fromPairedBinsToBins (PairedBins, Bins, G_clean, Exons)
-        #global_path_dict['Gene' + str(gene_counter)] = activeBinPathEnumeration3('0', pfad, local_path_dict, path_number, [], G_full, Bins)
-        global_path_dict['Gene' + str(gene_counter)] = activeBinPathEnumeration3('0', pfad, local_path_dict, path_number, [], G_clean, MultiBins)        
+        # Bins = fromPairedBinsToBins (PairedBins, Bins, G_clean, Exons)
+        # incorrectPairedBins = checkPairedBins(PairedBins)
+        # Bins, newMultiBins = fromPairedBinsToBins (PairedBins, Bins, G_clean, Exons)
+        # global_path_dict['Gene' + str(gene_counter)] = activeBinPathEnumeration3('0', pfad, local_path_dict, path_number, [], G_full, Bins)
+        global_path_dict['Gene' + str(gene_counter)] = activeBinPathEnumeration3('1','0', pfad, local_path_dict, path_number, [], G_clean, MultiBins)        
         #global_path_dict_multi['Gene' + str(gene_counter)] = activeMultiBinPathEnumeration('0', pfad_multi, local_path_dict_multi, path_number_multi, MultiBins, G_clean, MultiBins)
         #global_path_dict_full['Gene' + str(gene_counter)] = fullPathEnumeration('0', pfad_full, local_path_dict_full, path_number_full, G_full)
         gene_counter = gene_counter + 1

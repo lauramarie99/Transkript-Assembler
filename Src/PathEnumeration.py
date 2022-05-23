@@ -147,8 +147,10 @@ def activeBinPathEnumeration2(v:str, pfad:list, allpaths:dict, path_number:list,
     # activeBinpathEnumeration3     
     #  
 
-def activeBinPathEnumeration3(v:str, pfad:list, allpaths:dict, path_number:list, activeBins:list, graph, Bins:list):
-    if v == '1':                                                                                                        # If current node is drain
+def activeBinPathEnumeration3(endnode:str, v:str, pfad:list, allpaths:dict, path_number:list, activeBins:list, graph, Bins:list):
+    if v not in list(graph.nodes()):
+        return
+    if v == endnode:                                                                                                        # If current node is drain
         allpaths[path_number[0]] = nodepath_to_transcript(graph, pfad)                                                  # Add current path transcribed into a transcript to the allpath dictionary
         path_number[0] = path_number[0] + 1                                                                             # Increase Pathcounter
         return
@@ -172,12 +174,8 @@ def activeBinPathEnumeration3(v:str, pfad:list, allpaths:dict, path_number:list,
                 if len(bin1.exons)>2 and bin1.exons[1] == activeExonNumber and bin1.exons[0] == previousExonNumber:     # newly added bins to NewActiveBins are defined as such:
                     newActiveBins.append(bin1)                                                                          # 1. first Exon of the Bin is the beginning of the currently checked edge (PreviousExonNumber)
                                                                                                                         # 2. second Exon of the Bin is the end of the currently checked edge (ActiveExonNumber)
-                                                                                                                        # If these criteria are met, add the bin to newActiveBins   
-                # """ else:
-                #     if bin1.exons[0] == activeExonNumber:                                                           
-                #         newActiveBins.append(bin1)                                                                                            
-                #  """                                                                                                        
+                                                                                                                        # If these criteria are met, add the bin to newActiveBins                                                                                                    
         else:                                                                                                           # If EdgeType is no SpliceJunctions
             newActiveBins=activeBins                                                                                    # all formerly activeBins are newActiveBins
-        activeBinPathEnumeration3(u, pfad+[u], allpaths, path_number, newActiveBins, graph, Bins)                       # call ActiveBinPathEnumeration for the current node
+        activeBinPathEnumeration3(endnode, u, pfad+[u], allpaths, path_number, newActiveBins, graph, Bins)                       # call ActiveBinPathEnumeration for the current node
     return allpaths
