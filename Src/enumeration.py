@@ -1,17 +1,16 @@
-
 # FULL ENUMERATION FUNCTION
 """
 The enumeration function is searching for all possible paths in a given graph
 """
-def enumeration(graph,transkripts:list,node:str,path:list):
+def enumeration(graph,transkripts:list,node:str,path:list, endnode:str):
     # if the end node is reached, a path is found and added to the transkript list
-    if node == "1":
+    if node == endnode:
         transkripts.append(parse_graph_new.nodepath_to_transcript(graph,path))
-        return
+        return  
     else:
         succ = list(graph.adj[node]) # succ list contains all successors
         for n in succ:
-            enumeration(graph,transkripts,n,(path + [n]))
+            enumeration(graph,transkripts,n,(path + [n]),endnode)
     return transkripts
  
 
@@ -46,9 +45,9 @@ The enumeration_bins functions are using the multibin constraint.
 The bins list contains all bins with more than two exons.
 In the beginning act_bins = bins.
 """
-def enumeration_bins(graph,transkripts:list,node:str,path:list,act_bins:list,bins:list):
+def enumeration_bins(graph,transkripts:list,node:str,path:list,act_bins:list,bins:list,endnode:str):
     
-    if node == "1":
+    if node == endnode:
         transkripts.append(parse_graph_new.nodepath_to_transcript(graph,path))
         return
     else:
@@ -85,7 +84,7 @@ def enumeration_bins(graph,transkripts:list,node:str,path:list,act_bins:list,bin
                 new_bins = act_bins
 
             # Follow the path
-            enumeration_bins(graph,transkripts,n,(path + [n]),new_bins,bins)          
+            enumeration_bins(graph,transkripts,n,(path + [n]),new_bins,bins,endnode)          
             
     return transkripts
 
@@ -93,9 +92,9 @@ def enumeration_bins(graph,transkripts:list,node:str,path:list,act_bins:list,bin
 Similar to enumeration_bins function, but easier.
 Here, the act_bins list is empty at the beginning.
 """
-def enumeration_bins2(graph,transkripts:list,node:str,path:list,act_bins:list,bins:list):
+def enumeration_bins2(graph,transkripts:list,node:str,path:list,act_bins:list,bins:list,endnode:str):
     
-    if node == "1":
+    if node == endnode:
         transkripts.append(parse_graph_new.nodepath_to_transcript(graph,path))
         return
     else:
@@ -131,6 +130,6 @@ def enumeration_bins2(graph,transkripts:list,node:str,path:list,act_bins:list,bi
                 new_bins = act_bins
 
             # Follow the path
-            enumeration_bins2(graph,transkripts,n,(path + [n]),new_bins,bins)          
+            enumeration_bins2(graph,transkripts,n,(path + [n]),new_bins,bins,endnode)          
             
     return transkripts
