@@ -3,6 +3,8 @@
 import sys, ast, os
 import networkx as nx
 from collections import namedtuple
+
+from sqlalchemy import false
 from parse_graph_list_commented_Arbeitsdatei import nodepath_to_transcript
 from PathEnumeration import activeBinPathEnumeration3
 
@@ -13,27 +15,14 @@ def getBins(Bins:list):
     return binList
 
 # Function to check, whether there are bins with incorrect order (e. g. left 1,3,2 or right 4,3,5)
-def checkPairedBins(PairedBins):
-    binList = []
-    for bin in PairedBins:
-        incorrectPairedBinBoolean = False
-        for i in range (0, len(bin.leftExons)-1): 
-            if incorrectPairedBinBoolean == True:
-                break
-            for j in range (i+1, len(bin.leftExons)):
-                if bin.leftExons[i] > bin.leftExons[j]: 
-                    incorrectPairedBinBoolean = True
-                    break
-                
-        for i in range (0, len(bin.rightExons)-1): 
-            if incorrectPairedBinBoolean == True:
-                break
-            for j in range (i+1, len(bin.rightExons)):
-                if bin.rightExons[i] > bin.rightExons[j]: 
-                    incorrectPairedBinBoolean = True
-        if incorrectPairedBinBoolean == False:
-            binList.append(bin)
-    return binList
+def checkPairedBins(bin):
+    for i in range (0, len(bin.leftExons)-2): 
+        if bin.leftExons[i] > bin.leftExons[i+1]:
+            return False 
+    for i in range (0, len(bin.rightExons)-2): 
+        if bin.rightExons[i] > bin.rightExons[i+1]: 
+            return False            
+    return True
 
 def appendBinsLong(path_dict:dict, bin, fullLengthBoolean, Bins:list, allNewBins:list, BinT):
     for value in path_dict.values():
@@ -59,7 +48,9 @@ def appendBinsShort(Bins:list, exonBin:list):
 def fromPairedBinsToBins(pairedBins, Bins, graph, Exons:list):
     BinT = namedtuple('BinT', 'exons count')
     allNewBins = []
-    for bin in pairedBins:                                                                                                              # Read Bins from PairedBins
+    for bin in pairedBins:
+        if checkPairedBins (bin) == False:
+            continue                                                                                                              # Read Bins from PairedBins
         last_left_exon = bin.leftExons[len(bin.leftExons)-1]                                                                            # Define LastExon of left Bins and 
         first_right_exon = bin.rightExons[0]                                                                                            # FirstExon of RightBins
         incorrectPairedBinBoolean = False                                                                                               # Define the incorrectPairedBinBoolean
@@ -173,14 +164,14 @@ def fromPairedBinsToBins(pairedBins, Bins, graph, Exons:list):
                 else:                                                                                                                       # Otherwise last exon of exonBin and first exon of leftExons are not the same 
                     startNodeLastLeftExon = exonBin[len(exonBin)-1] + 2                                                                         # define startNode of last_left_exon
                     startNodeFirstRightExon = bin.leftExons[0] + 2                                                                              # define rightnode of last_right_exon
-                    full_path_dict = activeBinPathEnumeration3(str(startNodeFirstRightExon), str(startNodeLastLeftExon), [str(startNodeLastLeftExon)], {}, [0], [], graph, Bins) # perform path enumeartion using the multiBinconstraints
+                    full_path_dict = activeBinPathEnumeration3(str(startNodeFirstRightExon), str(startNodeLastLeftExon), [str(startNodeLastLeftExon)], {}, [0], [], graph, Bins) # employ path enumeartion using the multiBinconstraints
                     if full_path_dict != None:                                                                                                  # if there was at least one path found
                         appendBinsLong(full_path_dict, bin, False, Bins, allNewBins, BinT)                                                          # append it to the dictionary
         
         if last_left_exon < first_right_exon:                                                                                               # last case -> exons left in rightExons and last_left_exon<first_right_exon  
             startNodeLastLeftExon = last_left_exon + 2                                                                                          # define startnode of last_left_exon
             startNodeFirstRightExon = first_right_exon +2                                                                                       # Get startnode of firstRightExon                                                                                
-            full_path_dict = activeBinPathEnumeration3(str(startNodeFirstRightExon), str(startNodeLastLeftExon), [str(startNodeLastLeftExon)], {}, [0], [], graph, Bins) # perform pathEnumeration with MultiBinConstraint
+            full_path_dict = activeBinPathEnumeration3(str(startNodeFirstRightExon), str(startNodeLastLeftExon), [str(startNodeLastLeftExon)], {}, [0], [], graph, Bins) # employ pathEnumeration with MultiBinConstraint
             if full_path_dict != None:                                                                                                      # If at least one path between real_last_left_exon and real_first_right_exon has been found
                 appendBinsLong(full_path_dict, bin, True, Bins, allNewBins, BinT)                                                           # append it
     return Bins, allNewBins
