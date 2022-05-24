@@ -42,10 +42,10 @@ with open("/home/laura/Documents/Transkript_Assembly/data/human_geuvadis/test3.g
 
         multi_bins = path_enumeration.get_multibins(Bins) # Filter all bins with more than two exons
         
-        transkripts_bins1 = path_enumeration.enumeration_bins(G_clean,transkripts_bins1,"0",["0"],multi_bins,multi_bins) # Function 1
+        transkripts_bins1 = path_enumeration.enumeration_bins(G_clean,transkripts_bins1,"0",["0"],multi_bins,multi_bins,"1") # Function 1
         print("Transkripts for function 1:",len(transkripts_bins1),transkripts_bins1)
 
-        transkripts_bins2 = path_enumeration.enumeration_bins2(G_clean,transkripts_bins2,"0",["0"],[],multi_bins) # Function 2
+        transkripts_bins2 = path_enumeration.enumeration_bins2(G_clean,transkripts_bins2,"0",["0"],[],multi_bins,"1") # Function 2
         print("Transkripts for function 2:",len(transkripts_bins2),transkripts_bins2)
         
         # The results should be the same!
