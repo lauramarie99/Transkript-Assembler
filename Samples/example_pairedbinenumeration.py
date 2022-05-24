@@ -8,6 +8,7 @@ The function enumeration_pairedbins considers paths with corresponding paired bi
 from collections import namedtuple
 from pydoc import pathdirs
 import parse_graph_new
+import pairedbin_enumeration
 import path_enumeration
 import networkx as nx
 from matplotlib import pyplot as plt
@@ -37,8 +38,10 @@ with open("/home/laura/Documents/Transkript_Assembly/data/human_geuvadis/test3.g
             
 
         # PATH ENUMERATION OF GRAPH
-        pairedbins = path_enumeration.get_pairedbins(G_clean,PairedBins)
-        transkripts = path_enumeration.enumeration_pairedbins(G_clean,[],"0",["0"],[],pairedbins)
+
+        filtered_bins = path_enumeration.get_multibins(Bins)
+        pairedbins = pairedbin_enumeration.get_pairedbins(G_clean,PairedBins,filtered_bins)
+        transkripts = path_enumeration.enumeration_bins2(G_clean,[],"0",["0"],[],pairedbins,"1")
         print("Transkripts:", len(transkripts), transkripts)
         
 
