@@ -31,7 +31,7 @@ with open("/home/laura/Documents/Transkript_Assembly/data/human_geuvadis/test3.g
 
         # ENUMERATION
         transcripts = []
-        transcripts = path_enumeration.enumeration(G_clean,transcripts,"0",["0"])
+        transcripts = path_enumeration.enumeration(G_clean,transcripts,"0",["0"],"1")
         print("Transcripts:", len(transcripts),transcripts)
     
     f.close()
