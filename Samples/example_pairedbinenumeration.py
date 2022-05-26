@@ -1,7 +1,7 @@
 """
 This is an example for the enumeration function with paired-bin constraint. 
 As input file, a graph file with one single gene is used.
-The function enumeration_pairedbins considers paths with corresponding paired bins.
+The function considers paths with corresponding paired bins.
 """
 
 # IMPORT
@@ -41,7 +41,7 @@ with open("/home/laura/Documents/Transkript_Assembly/data/human_geuvadis/test3.g
 
         filtered_bins = path_enumeration.get_multibins(Bins)
         pairedbins = pairedbin_enumeration.get_pairedbins(G_clean,PairedBins,filtered_bins)
-        transkripts = path_enumeration.enumeration_bins2(G_clean,[],"0",["0"],[],pairedbins,"1")
+        transkripts = path_enumeration.enumeration_bins2(G_clean,[],"0",["0"],[],(pairedbins+filtered_bins),"1")
         print("Transkripts:", len(transkripts), transkripts)
         
 
