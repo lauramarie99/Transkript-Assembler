@@ -1,7 +1,5 @@
-# 90841 Transkripte for clean graph
-
+# 90908 Transkripte for clean graph
 import networkx as nx
-import parse_graph_new
 import path_enumeration
 from collections import namedtuple
 
@@ -24,8 +22,8 @@ def get_pairedbins(graph,pairedbins,multibins):
         right = pairedbin.rightExons # Right exons of paired bin
         count = pairedbin.count # Number of reads found
         
-        # CASE 1: All right exons are smaller than the left exons
-        if left[0] > right[len(right)-1]:          
+        # CASE 1: The first right exon is smaller than the first left exon
+        if left[0] > right[0]:          
             x = left
             left = right
             right = x
@@ -33,20 +31,19 @@ def get_pairedbins(graph,pairedbins,multibins):
         # CASE 2: Right and left exons share exons (1,2,4-4,5)
         # CASE 3: Right and left exons do not share exons (1,2-5)
         invalid = False
+        
         # For Loop removes all repeats in the right exons, for example left:1,2,3 and right:3,4,5 will be transformed into left:1,2,3 and right:4,5
         for i in range(0,len(left)):
             if left[i] == right[0]:
                 right.pop(0)
-                if len(right)!=0:
+                if len(right) > 0:
                     if i!=(len(left)-1) and left[i+1] != right[0]: # A paired bin with left exons 1,2,4 and right exons 2,5,6 is invalid
                         invalid = True
-                        break                    
+                        break  
             if len(right) == 0:
                 break
-        
         if invalid == True:
             continue
-        
         
         # If the right exon list is now empty, no enumeration has to be carried out.
         if len(right) == 0:
@@ -58,12 +55,14 @@ def get_pairedbins(graph,pairedbins,multibins):
         # If the first right exon is smaller than the last left exon, the bin is invalid
         elif right[0] < left[len(left)-1]:
             continue
-        
+            
         else:
             start_node = str(left[len(left)-1] + 2) # The start exon is the last exon in the left list. The name of the corresponding node in the graph has to be calculated
             end_node = str(right[0] + 2) # Same for the end exon, which is the first exon in the right exon list
             if (graph.has_node(start_node) and graph.has_node(end_node)):
                 new_pairedbins = path_enumeration.enumeration_bins2(graph,new_pairedbins,start_node,[start_node],[],multibins,end_node) # Path enumeration between left and right exons to find all connections
+            else:
+                continue
             # Bins have to be completed by adding the missing start and end exons
             for i in range(len(new_pairedbins)):
                 if len(left) > 1:
