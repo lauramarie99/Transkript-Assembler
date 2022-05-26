@@ -4,6 +4,8 @@ from collections import namedtuple
 from PathEnumeration import fullPathEnumeration, activeBinPathEnumeration, activeBinPathEnumeration2, activeBinPathEnumeration3, getMultiBins
 from PathEnumeration_old import activeMultiBinPathEnumeration
 from PairedBinsToBins import fromPairedBinsToBins, checkPairedBins
+from PostFilterPairedBin import groupPairedBins
+from PairedBinsToBins_short import fromPairedBinsToBinsShort
 from parse_graph_list_commented_Arbeitsdatei import parse_meta, parse_bins, parse_pairs, parse_graph, write_valid_gtf_entry, nodepath_to_transcript
 
 dummyf = open("dummyout.gtf", "w")                                                                                              # output for the dummy code
@@ -17,6 +19,7 @@ with open('human_geuvadis_simulated_5sets.graph') as f:
     global_path_dict_full = {}
     gene_counter=0
     anzahlPfade = 0
+    pairedBinDict = {}
     #anzahlPfade_multi=0                                                                                                   
     #anzahlPfade_full=0
     while not fileEndReached:
@@ -47,11 +50,13 @@ with open('human_geuvadis_simulated_5sets.graph') as f:
         #path_number_full = [0]
         zaehler = [0]
         MultiBins = getMultiBins(Bins)
-        MultiBins, newMultiBins = fromPairedBinsToBins (PairedBins, MultiBins, G_clean, Exons)
+        MultiBins=fromPairedBinsToBinsShort(PairedBins, MultiBins, G_clean, Exons, True)
+        # groupedPairedBins = groupPairedBins(PairedBins)
+        # MultiBins, newMultiBins = fromPairedBinsToBins (PairedBins, MultiBins, G_clean, Exons)
         # Bins = fromPairedBinsToBins (PairedBins, Bins, G_clean, Exons)
         # incorrectPairedBins = checkPairedBins(PairedBins)
         # Bins, newMultiBins = fromPairedBinsToBins (PairedBins, Bins, G_clean, Exons)
-        # global_path_dict['Gene' + str(gene_counter)] = activeBinPathEnumeration3('0', pfad, local_path_dict, path_number, [], G_full, Bins)
+        #global_path_dict['Gene' + str(gene_counter)] = activeBinPathEnumeration3('0', pfad, local_path_dict, path_number, [], G_full, Bins)
         global_path_dict['Gene' + str(gene_counter)] = activeBinPathEnumeration3('1','0', pfad, local_path_dict, path_number, [], G_clean, MultiBins)        
         #global_path_dict_multi['Gene' + str(gene_counter)] = activeMultiBinPathEnumeration('0', pfad_multi, local_path_dict_multi, path_number_multi, MultiBins, G_clean, MultiBins)
         #global_path_dict_full['Gene' + str(gene_counter)] = fullPathEnumeration('0', pfad_full, local_path_dict_full, path_number_full, G_full)
