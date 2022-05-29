@@ -28,33 +28,31 @@ def checkPairedBins(bin):
             return False            
     return True
 
-def appendBinsLong(path_dict:dict, bin, fullLengthBoolean, Bins:list, allNewBins:list, BinT, count):
+def appendBinsLong(path_dict:dict, bin, fullLengthBoolean, Bins:list, allNewBins:list, BinT, count, leftExons, rightExons):
     for value in path_dict.values():
         if len(value)>=2:
-            if fullLengthBoolean == True:
-                newBin = bin.leftExons + value[1:] + bin.rightExons
-            else:
-                newBin = bin.leftExons + value[1:len(value)-2] + bin.rightExons
+            newBin = leftExons + value[1:len(value)-1] + rightExons
         else:
-            newBin = bin.leftExons + bin.rightExons
+            newBin = leftExons + rightExons
         if len(newBin)<=2:
             continue
-        if appendBinsShort(Bins, newBin) == True:
+        if appendBinsShort(Bins, newBin, allNewBins) == True:
             allNewBins.append(BinT(exons=newBin, count=count))
-        #if newBin not in allNewBins:
-        #    allNewBins.append(newBin)
 
-def appendBinsShort(Bins:list, exons:list):
+def appendBinsShort(Bins:list, exons:list, allNewBins):
     for bin1 in Bins: 
         if exons == bin1.exons:
             return False
+    if len(allNewBins)>0:
+        for bin2 in allNewBins:
+            if exons==bin2.exons:
+                return False
     return True
             
 def fromPairedBinsToBinsShort(pairedBins, Bins, graph, Exons:list, multiBinRestriction):
     BinT = namedtuple('BinT', 'exons count')
     allNewBins = []
     for bin in pairedBins:                                                                                                                # Read Bins from PairedBins
-        #print(bin)                                                                                                                       # Optional print command
         
         # Cases we need to adress:
         # -1 left 0         right 1
@@ -76,12 +74,13 @@ def fromPairedBinsToBinsShort(pairedBins, Bins, graph, Exons:list, multiBinRestr
 #   i   # 15. left 4,6      right 2,5   -> needs to be discarded
 
     #1. Eliminate Cases with potential order mistakes
-        # e. .g Case 14 
-        if checkPairedBins (bin) == False:                                                                                              # Check potential order mistakes
+        # e. g. Case 14 
+        if checkPairedBins (bin) == False:
+            print(bin)                                                                                              # Check potential order mistakes
             continue
-        rightExons = bin.rightExons                                                                                                     # Assign bin.rightExons to righExons
-        leftExons = bin.leftExons
-        count = bin.count                                                                                                       # Assign bin.rightExons to righExons
+        rightExons = bin.rightExons                                                                                 # Assign bin.rightExons to rightExons
+        leftExons = bin.leftExons                                                                                   # Assign bin.leftExons to leftExons
+        count = bin.count                                                                                           # Assign bin.count to leftExons
 
     # 2. Switch leftExons and rightExons, if firstExon of rightExons is smaller than firstExon of leftExons
         # Case 6: left 1,2,5    right 0         ->  left 0          right 1,2,5
@@ -90,9 +89,9 @@ def fromPairedBinsToBinsShort(pairedBins, Bins, graph, Exons:list, multiBinRestr
         # Case 9: left 2,5      right 0,1,2,5,8 ->  left 0,1,2,5,8  right 2,5
         # Case 10:left 2,5      right 0,1,3,5,8 ->  left 0,1,3,5,8  right 2,5
         # Case 11:left 1,2,5    right 0,1,2,8   ->  left 0,1,2,8    right 1,2,5
-        # Case 15:left 2,5      right 4,6       ->  left 2,5        right 4,6
+        # Case 15:left 4,6      right 2,5       ->  left 2,5        right 4,6
          
-        if rightExons [0] < leftExons[0]:                                                                                               # If first rightExon is smaller than first leftExon -> switch 
+        if rightExons [0] < leftExons[0]:
             switchExons = rightExons
             rightExons = leftExons
             leftExons = switchExons
@@ -120,8 +119,8 @@ def fromPairedBinsToBinsShort(pairedBins, Bins, graph, Exons:list, multiBinRestr
         incorrectPairedBinBoolean = False
         for i in range (0, len(leftExons)):                                                                                    
             if rightExons[0] == leftExons[i]:                                                                                   # Match: (e. g. case 11)
-                # Filter now case 11:   left 1,2,5    right 0,1,2,8 (the hardest)
-                #        and case 4.1:  left 1,2,5      right 2,3,5,8                                                      
+                # Filter now switched  case 11:     right 0,1,2,8   left 1,2,5 (the hardest)
+                #        and switched case 4.1:     right 1,2,5     left 2,3,5,8                                                      
                 rightExons.pop(0)                                                                                               # Remove firstRightExon
                 if len(rightExons)>0:                                                                                           # If there's a remaining Exon in rightExons
                     if i<len(leftExons)-1 and leftExons[i+1] != rightExons[0]:                                                  # check, whether there are additional elements in both, leftExons and rightExons                                                                                             # successors miss-match
@@ -141,17 +140,10 @@ def fromPairedBinsToBinsShort(pairedBins, Bins, graph, Exons:list, multiBinRestr
         #              Trimmed Case 13  left 1,2,3       right []
         
         if len(rightExons) == 0:
-            # print('rightExons are empty')                                                                                       # optional printing command
             # Only if it's a real MultiBin -> Discard Case 0,1
             if len(leftExons)>2:
-             #   print('Try to append it')                                                                                       # optional printing command
-                if appendBinsShort(Bins, leftExons) == True:                                                                    # check whether Bins already contain it's alrdy contained in Bins
-                    allNewBins.append(BinT(exons=leftExons, count=count))                                                                # add it, if necessary
-              #      print('Appended.')                                                                                          # optional printing command
-              #  else:
-              #      print('Fail')                                                                                               # optional printing command                                                                                               
-              #  if bin.leftExons not in allNewBins:                                                                             # add it to allNewBins, if it's not in there alrdy 
-              #      allNewBins.append(bin.leftExons)                                                                
+                if appendBinsShort(Bins, leftExons, allNewBins) == True:                                                        # check whether Bins already contain it's alrdy contained in Bins
+                    allNewBins.append(BinT(exons=leftExons, count=count))                                                       # add it, if necessary
             continue                                                                                                            # Check next bin
     
     # 6. Deal with all cases with no empty rightExons
@@ -166,25 +158,32 @@ def fromPairedBinsToBinsShort(pairedBins, Bins, graph, Exons:list, multiBinRestr
             if multiBinRestriction == True:                                                                                     # If MultiBinRestriction is on -> check that resulting length is >2                               
             # 6.1 Get rid of case -1
                 if len(leftExons)==1 and len(rightExons) == 1 and leftExons[0] + 1 == rightExons[0]:                            # If we have case -1 (e. g. left 0, right 1)-> nothing to do
-                #    print('Not real MultiBin')                                                                                  # optional printing command
                     continue
 
-            #6.2 Now enumerate all residual cases
-                
-                # Trimmed Case 2:   left 1,2         right 5
-                # Trimmed Case 3:   left 1,2,5       right 8
-                # Switched Case 6:  left 0           right 1,2,5
+            # 6.2 Now enumerate all residual cases   
+                # Trimmed Case 2:       left 1,2         right 5
+                # Trimmed Case 3:       left 1,2,5       right 8
+                # Switched Case 6:      left 0           right 1,2,5
                 # Switched  Case 7      left 0,1        right 2,5
                 # Switched  Case 8      left 0,1        right 4,5
                 #           Case 12     left 1,2,3      right 5,7,8
+                
+            startNodeLastLeftExon = -1
+            endNodeFirstRightExon = -1
             
+            # 6.2.1 extract beginning end ending nodes of left and rightExon safely  
             if leftExons[len(leftExons)-1] < rightExons[0]:                                                                     
-                startNodeLastLeftExon = leftExons[len(leftExons)-1] + 2                                                         # define startnode of last left exon
-                startNodeFirstRightExon = rightExons[0] + 2                                                                     # define startnode of first right exon
-                #print('Enumerating between ' + str(leftExons[len(leftExons)-1]) + ' and ' + str(rightExons[0]))                 # optional printing command                                                                     
-                full_path_dict = activeBinPathEnumeration3(str(startNodeFirstRightExon), str(startNodeLastLeftExon), [str(startNodeLastLeftExon)], {}, [0], [], graph, Bins) # employ pathEnumeration with MultiBinConstraint
-                if full_path_dict != None:                                                                                                      # If at least one path between real_last_left_exon and real_first_right_exon has been found
-                    appendBinsLong(full_path_dict, bin, True, Bins, allNewBins, BinT, count)                                                           # append it
-    return (Bins+allNewBins)
+                for edgeKey, edgeValue in graph.edges.items():                                                                  # Iterate over all edges in the Graph
+                    if edgeValue['type'] == 'Exon':                                                                             # If you found an Exon 
+                        if edgeValue['exon'] == leftExons[len(leftExons)-1]:                                                    # check if lastLeftExon equals the exonNumber 
+                            startNodeLastLeftExon = edgeKey[0]                                                                      # define startnode of last left exon
+                        elif edgeValue['exon'] == rightExons[0]:                                                                # otherwise: check if firstRightExons equals the exonNumber 
+                            endNodeFirstRightExon = edgeKey[1]                                                                      # define startnode of first right exon
+                    if startNodeLastLeftExon!=-1 and endNodeFirstRightExon!=-1:                                                 # if startNode and endNode have been extracted skip the rest edges
+                        break 
+                full_path_dict = activeBinPathEnumeration3(str(endNodeFirstRightExon), str(startNodeLastLeftExon), [str(startNodeLastLeftExon)], {}, [0], [], graph, Bins) # employ pathEnumeration with MultiBinConstraint
+                if full_path_dict != None:                                                                                      # If at least one path between real_last_left_exon and real_first_right_exon has been found
+                    appendBinsLong(full_path_dict, bin, True, Bins, allNewBins, BinT, count, leftExons, rightExons)             # append it
+    return (Bins+allNewBins), allNewBins                                                                                        # Return newMultiBins and allNewBins
 
     
