@@ -1,3 +1,4 @@
+#Work in progress. Script written so it can be excecuted directly. 
 import Parsing
 import networkx as nx
 import FinalEnu
