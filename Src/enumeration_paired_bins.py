@@ -81,3 +81,99 @@ def get_pairedbins(graph,pairedbins,multibins):
             if (len(new_bin.exons) > 2):
                 all_pairedbins.append(new_bin)
     return all_pairedbins
+
+
+# POST-FILTER
+
+# GROUP PAIRS FUNCTION
+"""
+The group pairs function groups pairs with the identical first bin
+"""
+def group_pairs(pairedbins):
+    group_dict = {} # The bins are stored in a dictionary
+    for pairedbin in pairedbins:
+        left = pairedbin.leftExons
+        right = pairedbin.rightExons
+        invalid = False
+
+        if left[0] > right[0]:
+            x = left
+            left = right
+            right = x
+        
+        for i in range(0,len(left)):
+            if left[i] == right[0]:
+                right.pop(0)
+                if len(right) > 0:
+                    if i!=(len(left)-1) and left[i+1] != right[0]:
+                        invalid = True
+                        break  
+            if len(right) == 0:
+                break
+        if invalid == True:
+            continue
+        if len(right) == 0:
+            continue
+        if right[0] < left[len(left)-1]:
+            continue
+        if len(right) == 1 and len(left) == 1 and left[0] + 1 == right[0]:
+            continue
+
+        left = tuple(left) # Tuples as keys
+        if left in group_dict.keys():
+            right_exons = group_dict[left]
+            if right not in right_exons:
+                right_exons.append(right)
+            group_dict[left] = right_exons
+        else:
+            right_exons = []
+            right_exons.append(right)
+            group_dict[left] = right_exons
+    
+    return group_dict
+
+# FILTER_TRANSCRIPTS FUNCTION
+"""
+The filter_transcripts function removes all transcripts which match the common bin but none of the second partners (for each group)
+"""
+
+def filter_transcripts(transcripts,group_dict):
+    for left_exons in group_dict.keys(): # Take each group
+        i = 0
+        while i < len(transcripts): # Iterate through the list of transcripts
+            transcript = transcripts[i]
+            validpath = True # Boolean checking if transcript is valid
+            if left_exons[0] in transcript:
+                j = transcript.index(left_exons[0]) # Get index where common bin starts
+                if j+len(left_exons) < len(transcript): # If this statement is false, the common bin is not part of the trancript
+                    k = 1
+                    valid = True # Boolean checking if the common bin is part of the transcript
+                    while k < len(left_exons):
+                        if transcript[j+k] != left_exons[k]:
+                            valid = False 
+                            break
+                        k += 1
+                    
+                    if valid == True: # If the common bin is part of the transcript, let's look for the second partners
+                        validpath = False
+                        for right_exons in group_dict[left_exons]: # Iterate through second partners
+                            if right_exons[0] in transcript:
+                                start_index = transcript.index(right_exons[0])
+                                if start_index+len(right_exons) <= len(transcript):
+                                    m = 1
+                                    valid2 = True
+                                    while m < len(right_exons):
+                                        if transcript[start_index+m] != right_exons[m]:
+                                            valid2 = False
+                                            break
+                                        m += 1
+                                    if valid2 == True:
+                                        validpath = True
+                                        break
+                        if validpath == False: # If common bin was found in the transcript but none of the second partners, the transcript is removed
+                            transcripts.pop(i)
+                            i = i-1
+            i+=1                  
+    return transcripts
+
+
