@@ -57,17 +57,37 @@ with open('human_geuvadis_simulated_5sets.graph') as f:
         MultiBins = getMultiBins(Bins)
 
         # 3. Add PairedBins to MultiBins
-        MultiBins, gepaarteBins = fromPairedBinsToBinsShort(PairedBins, MultiBins, G_clean, Exons, True)
+        MultiBins, gepaarteBins = fromPairedBinsToBinsShort(PairedBins, MultiBins, G_full, Exons, True)
         
         # 4. Enumerate Paths with ActiveBinPathEnumeration3
-        paths['Gene' + str(geneCounter)] = activeBinPathEnumeration3('1', '0', ['0'], {}, enumerationPathNumber, [], G_clean, MultiBins)
+        paths['Gene' + str(geneCounter)] = activeBinPathEnumeration3('1', '0', ['0'], {}, enumerationPathNumber, [], G_full, MultiBins)
+        #pathDict = deepcopy(paths)
+
+        # 4a Enumearte paths with ActiveBinPathEnumeration3 (Bins)
+        #paths['Gene' + str(geneCounter)] = activeBinPathEnumeration3('1', '0', ['0'], {}, enumerationPathNumber, [], G_clean, MultiBins)
 
         # 5. Group paired Bins to filter valid paths after Enumeration 
         groupedPairedBins = groupPairedBins(pairedBinsCopy)
 
         # 6. Filter invalid Paths
         filteredPaths['Gene' + str(geneCounter)] = eliminateInvalidPaths(paths['Gene' + str(geneCounter)], groupedPairedBins, validPathNumber)
+        #filteredPathList = list(filteredPaths.values())
+
+        # for value in pathDict.values():
+        #     for path in value.values():
+        #         for path2 in filteredPaths.values():
+        #             if path not in path2.values():
+        #                 print (path)
         
+        # for bin in groupedPairedBins:
+        #     print ('Left Partner: ' + str(bin.leftExons) + ', RightPartner: ' + str(bin.rightExons))
+        
+        # for value in filteredPaths.values():
+        #     for path in value.values():
+        #         print()
+        #         print('Paths')
+        #         print(path)
+
         # 7. Increase geneCounter
         geneCounter = geneCounter + 1
 
@@ -101,4 +121,4 @@ with open('human_geuvadis_simulated_5sets.graph') as f:
 
 dummyf.close()
 print(enumerationPathCounter)
-print(validPathCounter)
+print(enumerationPathCounter-validPathCounter)

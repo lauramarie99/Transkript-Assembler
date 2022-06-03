@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
+from importlib.resources import path
 import sys, ast, os
 from turtle import left
 import networkx as nx
 from collections import namedtuple
+from sklearn.cluster import k_means
 
 from sqlalchemy import false
 from parse_graph_list_commented_Arbeitsdatei import nodepath_to_transcript
@@ -11,10 +13,11 @@ from PathEnumeration import activeBinPathEnumeration3
 from PairedBinsToBins_short import checkPairedBins
 
 def groupPairedBins(pairedBins):
-    PairedBinT = namedtuple('GroupPairedBinT', 'leftExons rightExons')
+    PairedBinT = namedtuple('GroupPairedBinT', 'leftExons rightExons count')
     groupedPairedBins = []
     predecessor = []
     rightExonList = []
+    countList = []
     counter = 0
     for bin in pairedBins:
         # 1. Eliminate potential order mistakes
@@ -80,37 +83,41 @@ def groupPairedBins(pairedBins):
         if counter < 1:
             predecessor = leftExons
             rightExonList.append(rightExons)
+            countList.append(count)
             counter = counter + 1
             continue
         if predecessor == leftExons:
             rightExonList.append(rightExons)
+            countList.append(count)
         else:
             for bin in groupedPairedBins:
                 if bin.leftExons==predecessor:
                     rightExonList = bin.rightExons + rightExonList
+                    countList = bin.count + countList
                     groupedPairedBins.remove(bin)
-                    groupedPairedBins.append(PairedBinT(leftExons=predecessor, rightExons=rightExonList))    
+                    groupedPairedBins.append(PairedBinT(leftExons=predecessor, rightExons=rightExonList, count=countList))    
                     alreadyExistingBoolean = True
             if alreadyExistingBoolean == False:
-                groupedPairedBins.append(PairedBinT(leftExons=predecessor, rightExons=rightExonList))
+                groupedPairedBins.append(PairedBinT(leftExons=predecessor, rightExons=rightExonList, count=countList))
             
             predecessor = leftExons
             rightExonList = [rightExons]
+            countList = [count]
             
     return groupedPairedBins
 
-def eliminateInvalidPaths(path_dict:dict, groupedPairedBins, validPathNumber):
-    filteredPaths = {}
-    for key, value in path_dict.items():                                                        # Check every path
+def eliminateInvalidPaths(paths:dict, groupedPairedBins, validPathNumber):
+    for k in range(len(paths.keys())):
+        path = paths[k]
         for bin in groupedPairedBins:                                                           # For every check every groupedBin
             compatibleLeftBinBoolean = False                                                    # Define two Booleans for finding of compatible leftBins 
-            compatibleRightBinBoolean = False                                                   # and rightBins and assign them the value false
-            for i in range(0, len(value)):                                                      # Iterate over all Exons in the path 
-                if value[i] == bin.leftExons[0]:                                                # Position in the Path matches first Exon in leftExons
+            compatibleRightBinBoolean = False      
+            for i in range(0, len(path)):                                                      # Iterate over all Exons in the path 
+                if path[i] == bin.leftExons[0]:                                                # Position in the Path matches first Exon in leftExons
                     if len(bin.leftExons)>1:                                                    # If bin.leftExons is > 1, otherwise iteration over all Exons in the Bin is unnecessary
-                        if len(value)-i>=len(bin.leftExons):                                    # Residual length of the current path is greater or equal than the length of the currently checked leftBin                                                                                        
+                        if len(path)-i>=len(bin.leftExons):                                    # Residual length of the current path is greater or equal than the length of the currently checked leftBin                                                                                        
                             for j in range(1, len(bin.leftExons)):                              # Now check every following Exon in bin.leftExons 
-                                if value[i+j] != bin.leftExons[j]:                              # If you find a missmatch:
+                                if path[i+j] != bin.leftExons[j]:                              # If you find a missmatch:
                                     break                                                       # break
                                 elif j == len(bin.leftExons)-1:                                 # If you have reached the end, and found only matches 
                                     compatibleLeftBinBoolean = True                             # you foud a compatible leftBinBoolean
@@ -120,16 +127,16 @@ def eliminateInvalidPaths(path_dict:dict, groupedPairedBins, validPathNumber):
                     else:                                                                       # Size of left.BinExon is 1 => Match 
                         compatibleLeftBinBoolean = True                                         # Report this match
                         break
-                elif value[i] > bin.leftExons[0]:                                               # if current Exon of the path is greater thant first Exon of bin.leftExons
+                elif path[i] > bin.leftExons[0]:                                               # if current Exon of the path is greater than first Exon of bin.leftExons
                     break                                                                       # break also
             if compatibleLeftBinBoolean == True:                                                # Only if you have found a compatible leftBin
                 for rightBin in bin.rightExons:                                                 # Iterate every Bin in bin.rightExons
-                    for i in range(0, len(value)):                                              # Iterate every Exon in the Path 
-                        if value[i] == rightBin[0]:                                             # If you have found a match = a potential starting point
+                    for i in range(0, len(path)):                                              # Iterate every Exon in the Path 
+                        if path[i] == rightBin[0]:                                             # If you have found a match = a potential starting point
                             if len(rightBin)>1:
-                                if len(value)-i>=len(rightBin):                                 # Residual length of the current path is greater or equal than the length of currently checked rightBin
+                                if len(path)-i>=len(rightBin):                                 # Residual length of the current path is greater or equal than the length of currently checked rightBin
                                     for j in range(1, len(rightBin)):                           # Iterate every Exon of this particular rightBin
-                                        if value[j+i] != rightBin[j]:                           # If you have found a mismatch
+                                        if path[j+i] != rightBin[j]:                           # If you have found a mismatch
                                             break                                               # Break from "For j in range(1,len(rightBin)"
                                         elif j == len(rightBin)-1:                              # If you have reached the end of this rightBins
                                             
@@ -140,13 +147,12 @@ def eliminateInvalidPaths(path_dict:dict, groupedPairedBins, validPathNumber):
                             else:                                                               # Size of rightExon is 1 => Match
                                 compatibleRightBinBoolean = True                                # report this match
                                 break
-                        elif value[i]>rightBin[0]:                                              # If currently checked exon in the current path is greater than the first Exon of this particular rightBin 
+                        elif path[i]>rightBin[0]:                                               # If currently checked exon in the current path is greater than the first Exon of this particular rightBin 
                             break                                                               # Break from "for i in range" -> stop this search
                     if compatibleRightBinBoolean == True:                                       # If a compatible rightBin has been found, stop searching
                         break                                                                   # and break from "for rightBin in bin.rightExons:"
-            if compatibleRightBinBoolean == True and compatibleRightBinBoolean == True:         # if both Booleans are correct -> 
-                filteredPaths[key] = value                                                      # Add current path transcribed into a transcript to the allpath dictionary
-                validPathNumber[0] = validPathNumber[0] + 1                                     # Increase validPathNumber
-                break                                                                           # Check next keyvalue pair
-    
-    return filteredPaths                                                                        # return all filteredPaths
+            if compatibleLeftBinBoolean == True and compatibleRightBinBoolean == False:         # if both Booleans are correct -> 
+                paths.pop(k)                                                                    # Remove current path
+                validPathNumber[0] = validPathNumber[0] + 1
+                break
+    return paths                                                                                # return all filteredPaths
