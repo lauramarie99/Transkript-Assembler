@@ -1,6 +1,11 @@
-# FULL ENUMERATION FUNCTION
+# IMPORT
+import networkx as nx
+from collections import namedtuple
+import parse_graph_new
+
+# ENUMERATION FUNCTION
 """
-The enumeration function is searching for all possible paths in a given graph
+The enumeration function is searching for all possible paths in a given graph.
 """
 def enumeration(graph,transkripts:list,node:str,path:list, endnode:str):
     # if the end node is reached, a path is found and added to the transkript list
@@ -12,24 +17,25 @@ def enumeration(graph,transkripts:list,node:str,path:list, endnode:str):
         for n in succ:
             enumeration(graph,transkripts,n,(path + [n]),endnode)
     return transkripts
- 
 
-# GET BIN FUNCTION
+
+# GET_BINS FUNCTION
 """
 The get_bins function returns all bins starting with a specified exon.
-The function is needed for the enumeration_bins functions. 
+The function is needed for the enumeration_bins1 functions. 
 """
-def get_bins(bins:list,new_bins:list,exon:int):
+def get_bins(bins:list,exon:int):
+    new_bins = []
     for bin in bins: 
         if bin.exons[0] == exon:
             new_bins.append(bin)
     return new_bins
-  
-  
-# GET MULTI-BINS FUNCTION
+
+
+# GET_MULTIBINS FUNCTION
 """
 The get_multibins function filters all bins with more than two exons. 
-The function is needed for the enumeration_bins function.
+The function is needed for the enumeration_bins functions.
 """
 def get_multibins(bins:list):
     multi_bins = []
@@ -37,15 +43,15 @@ def get_multibins(bins:list):
         if len(bin.exons) > 2:
             multi_bins.append(bin)
     return multi_bins
-  
-  
-# ENUMERATION_BINS FUNCTION
+
+
+# ENUMERATION_BINS1 FUNCTION
 """
-The enumeration_bins functions are using the multibin constraint. 
-The bins list contains all bins with more than two exons.
+The enumeration_bins1 function is an enumeration function with multibin constraint. 
+The bin list contains all bins with more than two exons.
 In the beginning act_bins = bins.
 """
-def enumeration_bins(graph,transkripts:list,node:str,path:list,act_bins:list,bins:list,endnode:str):
+def enumeration_bins1(graph,transkripts:list,node:str,path:list,act_bins:list,bins:list,endnode:str):
     
     if node == endnode:
         transkripts.append(parse_graph_new.nodepath_to_transcript(graph,path))
@@ -54,11 +60,11 @@ def enumeration_bins(graph,transkripts:list,node:str,path:list,act_bins:list,bin
         succ = list(graph.adj[node]) # succ contains all successor nodes
         for n in succ:
             
-            if graph.edges[node,n]['type'] == "SpliceJunction": # check if there's a splice junction (we would reach a new exon and have to check for compatibility!)
+            if graph.edges[node,n]['type'] == "SpliceJunction": # check if there's a splice junction: we reach a new exon and have to check for compatibility!
                 start_exon = graph.edges[node,n]["startExon"] # start Exon 
                 end_exon = graph.edges[node,n]["endExon"] # end Exon
                 
-                new_bins = [] # stores all active bins, which contain the start node followed by the end node and at least one more exon 
+                new_bins = [] # stores all active bins
                 valid = False # checks if there are compatible bins: Active bins, which contain start and end exon, and the start_exon is not the first exon of the bin.
                 other_bins = False # checks if there are active bins, which contain the start exon followed by another exon (not end exon!), and the start_exon is not the first exon of the bin.
                 
@@ -79,18 +85,19 @@ def enumeration_bins(graph,transkripts:list,node:str,path:list,act_bins:list,bin
                 # Get all new bins starting with the end exon
                 new_bins = new_bins + get_bins(bins,end_exon)
             
-            # If the edge represents helper edge or exon edge, the bin composition is not changed
+            # If the edge represents helper edge or exon edge, the bin composition doesn't change
             else:
                 new_bins = act_bins
 
             # Follow the path
-            enumeration_bins(graph,transkripts,n,(path + [n]),new_bins,bins,endnode)          
+            enumeration_bins1(graph,transkripts,n,(path + [n]),new_bins,bins,endnode)          
             
     return transkripts
 
+# ENUMERATION_BINS2 FUNCTION
 """
-Similar to enumeration_bins function, but easier.
-Here, the act_bins list is empty at the beginning.
+Similar to enumeration_bins1 function, but easier to understand.
+The act_bins list is empty at the beginning.
 """
 def enumeration_bins2(graph,transkripts:list,node:str,path:list,act_bins:list,bins:list,endnode:str):
     
@@ -101,11 +108,11 @@ def enumeration_bins2(graph,transkripts:list,node:str,path:list,act_bins:list,bi
         succ = list(graph.adj[node]) # succ contains all successor nodes
         for n in succ:
             
-            if graph.edges[node,n]['type'] == "SpliceJunction": # check if there's a splice junction (we would reach a new exon and have to check for compatibility!)
+            if graph.edges[node,n]['type'] == "SpliceJunction": # check if there's a splice junction: We reach a new exon and have to check for compatibility!
                 start_exon = graph.edges[node,n]["startExon"] # start Exon 
                 end_exon = graph.edges[node,n]["endExon"] # end Exon
                 
-                new_bins = [] # stores all active bins, which contain the start node followed by the end node and at least one more exon 
+                new_bins = [] # stores all active bins
                 valid = False # checks if there are compatible bins: Active bins, which contain start and end exon, and the start_exon is not the first exon of the bin.
                 
                 for bin1 in act_bins:
