@@ -21,6 +21,7 @@ def get_pairedbins(graph,pairedbins,multibins):
         invalid = False # Boolean to check if bin is invalid
         
         # CASE 1: The first right exon is smaller than the first left exon
+        print(pairedbin)
         if left[0] > right[0]:
             x = left
             left = right
@@ -62,6 +63,8 @@ def get_pairedbins(graph,pairedbins,multibins):
                     start_node = edgeKey[0]
                 elif edgeValue['exon'] == end_exon:
                     end_node = edgeKey[0]
+            if start_node != "" and end_node != "":
+                break
 
         # If start exon or end exon is not found, continue with next paired bin     
         if start_node == "" or end_node == "":
@@ -83,7 +86,6 @@ def get_pairedbins(graph,pairedbins,multibins):
     return all_pairedbins
 
 
-# POST-FILTER
 
 # GROUP PAIRS FUNCTION
 """
@@ -95,7 +97,7 @@ def group_pairs(pairedbins):
         left = pairedbin.leftExons
         right = pairedbin.rightExons
         invalid = False
-
+        
         if left[0] > right[0]:
             x = left
             left = right
@@ -136,7 +138,6 @@ def group_pairs(pairedbins):
 """
 The filter_transcripts function removes all transcripts which match the common bin but none of the second partners (for each group)
 """
-
 def filter_transcripts(transcripts,group_dict):
     for left_exons in group_dict.keys(): # Take each group
         i = 0
@@ -145,7 +146,7 @@ def filter_transcripts(transcripts,group_dict):
             validpath = True # Boolean checking if transcript is valid
             if left_exons[0] in transcript:
                 j = transcript.index(left_exons[0]) # Get index where common bin starts
-                if j+len(left_exons) < len(transcript): # If this statement is false, the common bin is not part of the trancript
+                if j+len(left_exons) <= len(transcript): # If this statement is false, the common bin is not part of the trancript
                     k = 1
                     valid = True # Boolean checking if the common bin is part of the transcript
                     while k < len(left_exons):
@@ -175,5 +176,3 @@ def filter_transcripts(transcripts,group_dict):
                             i = i-1
             i+=1                  
     return transcripts
-
-
