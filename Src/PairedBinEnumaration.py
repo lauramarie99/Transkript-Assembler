@@ -33,8 +33,8 @@ with open(
                 for j in bin.rightExons:
                     if i == j:
                         bin.rightExons.remove(j)
-        print(PairedBins)
-        #create multibins where possible
+        #print(PairedBins)
+        #create multibins where possible (if last number in rightbins + 1 equals the first exon in leftbin --> create multibin
         for bin in PairedBins:
             if len(bin.leftExons) != 0 and len(bin.rightExons) != 0:
                 if ((bin.leftExons[-1]+1) == bin.rightExons[0]):
@@ -46,7 +46,8 @@ with open(
                     transkripts_bins = []
                     n = bin.leftExons[-1]
                     d = bin.rightExons[0]
-                    print(d)
+                    print(d) 
+                        #function call does not quit at given node, find out why 
                     transkripts_bins = FinalEnu.enumeration_bins2(G_clean, transkripts_bins,"0", ["0"], [],
                                                                            multi_bins, str(d))
                     #print(transkripts_bins)
