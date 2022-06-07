@@ -81,7 +81,8 @@ def groupPairedBins(pairedBins):
         alreadyExistingBoolean = False
         if binCounter < 1:
             rightExonList = [rightExons]
-            groupedPairedBins.append(PairedBinT(leftExons=leftExons, rightExons=rightExonList, count=count))
+            countList = [count]
+            groupedPairedBins.append(PairedBinT(leftExons=leftExons, rightExons=rightExonList, count=countList))
             binCounter = binCounter + 1
             continue 
         else:

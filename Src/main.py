@@ -106,5 +106,5 @@ with open('test.graph') as f:
         dummyGeneCounter = dummyGeneCounter + 1
 
 dummyf.close()
-for bin in groupedPairedBins:
-    print(bin)
+print(enumerationPathCounter)
+print(enumerationPathCounter-validPathCounter)
