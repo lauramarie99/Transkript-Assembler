@@ -12,7 +12,7 @@ from copy import deepcopy
 dummyf = open("dummyout.gtf", "w")                                                                                              # output for the dummy code
 dummyGeneCounter = 0
 
-with open('human_geuvadis_simulated_5sets.graph') as f:
+with open('test.graph') as f:
     fileEndReached = False
     f.readline()                                                                                                    #skip ---- seperator line
     
@@ -45,6 +45,9 @@ with open('human_geuvadis_simulated_5sets.graph') as f:
                                                                                                                     # Graph-File in graph clean und übergib die letzte Zeile fileEndReached
             G_clean = nx.DiGraph()                                                                                  # Erzeug einen neuen gerichteten Graphen 
             fileEndReached, _ = parse_graph(f, G_clean, Exons)
+        
+        else:
+            G_clean = G_full
 
         # Define necessary variables and assign
             # pathNumbers to enumerate paths  
@@ -57,37 +60,20 @@ with open('human_geuvadis_simulated_5sets.graph') as f:
         MultiBins = getMultiBins(Bins)
 
         # 3. Add PairedBins to MultiBins
-        MultiBins, gepaarteBins = fromPairedBinsToBinsShort(PairedBins, MultiBins, G_full, Exons, True)
+        #MultiBins, gepaarteBins = fromPairedBinsToBinsShort(PairedBins, MultiBins, G_clean, Exons, True)
         
         # 4. Enumerate Paths with ActiveBinPathEnumeration3
-        paths['Gene' + str(geneCounter)] = activeBinPathEnumeration3('1', '0', ['0'], {}, enumerationPathNumber, [], G_full, MultiBins)
-        #pathDict = deepcopy(paths)
+        paths['Gene' + str(geneCounter)] = activeBinPathEnumeration3('1', '0', ['0'], {}, enumerationPathNumber, [], G_clean, MultiBins)
 
-        # 4a Enumearte paths with ActiveBinPathEnumeration3 (Bins)
+        # 4a Enumerate paths with ActiveBinPathEnumeration3 (Bins)
         #paths['Gene' + str(geneCounter)] = activeBinPathEnumeration3('1', '0', ['0'], {}, enumerationPathNumber, [], G_clean, MultiBins)
 
         # 5. Group paired Bins to filter valid paths after Enumeration 
         groupedPairedBins = groupPairedBins(pairedBinsCopy)
 
         # 6. Filter invalid Paths
-        filteredPaths['Gene' + str(geneCounter)] = eliminateInvalidPaths(paths['Gene' + str(geneCounter)], groupedPairedBins, validPathNumber)
-        #filteredPathList = list(filteredPaths.values())
-
-        # for value in pathDict.values():
-        #     for path in value.values():
-        #         for path2 in filteredPaths.values():
-        #             if path not in path2.values():
-        #                 print (path)
+        #filteredPaths['Gene' + str(geneCounter)] = eliminateInvalidPaths(paths['Gene' + str(geneCounter)], groupedPairedBins, validPathNumber)
         
-        # for bin in groupedPairedBins:
-        #     print ('Left Partner: ' + str(bin.leftExons) + ', RightPartner: ' + str(bin.rightExons))
-        
-        # for value in filteredPaths.values():
-        #     for path in value.values():
-        #         print()
-        #         print('Paths')
-        #         print(path)
-
         # 7. Increase geneCounter
         geneCounter = geneCounter + 1
 
@@ -120,5 +106,5 @@ with open('human_geuvadis_simulated_5sets.graph') as f:
         dummyGeneCounter = dummyGeneCounter + 1
 
 dummyf.close()
-print(enumerationPathCounter)
-print(enumerationPathCounter-validPathCounter)
+for bin in groupedPairedBins:
+    print(bin)

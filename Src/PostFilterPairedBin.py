@@ -15,10 +15,9 @@ from PairedBinsToBins_short import checkPairedBins
 def groupPairedBins(pairedBins):
     PairedBinT = namedtuple('GroupPairedBinT', 'leftExons rightExons count')
     groupedPairedBins = []
-    predecessor = []
     rightExonList = []
     countList = []
-    counter = 0
+    binCounter = 0
     for bin in pairedBins:
         # 1. Eliminate potential order mistakes
             # e. g. left   1,3,4    right: 5,6,7
@@ -80,29 +79,24 @@ def groupPairedBins(pairedBins):
         
         # 7. Group only valid and useful bins
         alreadyExistingBoolean = False
-        if counter < 1:
-            predecessor = leftExons
-            rightExonList.append(rightExons)
-            countList.append(count)
-            counter = counter + 1
-            continue
-        if predecessor == leftExons:
-            rightExonList.append(rightExons)
-            countList.append(count)
+        if binCounter < 1:
+            rightExonList = [rightExons]
+            groupedPairedBins.append(PairedBinT(leftExons=leftExons, rightExons=rightExonList, count=count))
+            binCounter = binCounter + 1
+            continue 
         else:
-            for bin in groupedPairedBins:
-                if bin.leftExons==predecessor:
-                    rightExonList = bin.rightExons + rightExonList
-                    countList = bin.count + countList
-                    groupedPairedBins.remove(bin)
-                    groupedPairedBins.append(PairedBinT(leftExons=predecessor, rightExons=rightExonList, count=countList))    
-                    alreadyExistingBoolean = True
-            if alreadyExistingBoolean == False:
-                groupedPairedBins.append(PairedBinT(leftExons=predecessor, rightExons=rightExonList, count=countList))
-            
-            predecessor = leftExons
             rightExonList = [rightExons]
             countList = [count]
+            for bin1 in groupedPairedBins:
+                if bin1.leftExons == leftExons:
+                    rightExonList = bin1.rightExons + rightExonList
+                    countList = bin1.count + countList
+                    groupedPairedBins.remove(bin1)
+                    groupedPairedBins.append(PairedBinT(leftExons=leftExons, rightExons=rightExonList, count=countList))
+                    alreadyExistingBoolean = True
+                    break
+            if alreadyExistingBoolean == False:
+                groupedPairedBins.append(PairedBinT(leftExons=leftExons, rightExons=rightExonList, count=countList))
             
     return groupedPairedBins
 

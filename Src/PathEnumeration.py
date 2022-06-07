@@ -150,7 +150,7 @@ def activeBinPathEnumeration2(v:str, pfad:list, allpaths:dict, path_number:list,
 def activeBinPathEnumeration3(endnode:str, v:str, pfad:list, allpaths:dict, path_number:list, activeBins:list, graph, Bins:list):
     if v not in list(graph.nodes()):
         return
-    if v == endnode:                                                                                                        # If current node is drain
+    if v == endnode:                                                                                                    # If current node is drain
         allpaths[path_number[0]] = nodepath_to_transcript(graph, pfad)                                                  # Add current path transcribed into a transcript to the allpath dictionary
         path_number[0] = path_number[0] + 1                                                                             # Increase Pathcounter
         return
@@ -177,5 +177,5 @@ def activeBinPathEnumeration3(endnode:str, v:str, pfad:list, allpaths:dict, path
                                                                                                                         # If these criteria are met, add the bin to newActiveBins                                                                                                    
         else:                                                                                                           # If EdgeType is no SpliceJunctions
             newActiveBins=activeBins                                                                                    # all formerly activeBins are newActiveBins
-        activeBinPathEnumeration3(endnode, u, pfad+[u], allpaths, path_number, newActiveBins, graph, Bins)                       # call ActiveBinPathEnumeration for the current node
+        activeBinPathEnumeration3(endnode, u, pfad+[u], allpaths, path_number, newActiveBins, graph, Bins)              # call ActiveBinPathEnumeration for the current node
     return allpaths
