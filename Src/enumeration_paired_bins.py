@@ -1,6 +1,5 @@
 import path_enumeration
 from collections import namedtuple
-
 BinT = namedtuple('BinT', 'exons count')
 
 # GET_PAIREDBINS FUNCTION
@@ -21,7 +20,6 @@ def get_pairedbins(graph,pairedbins,multibins):
         invalid = False # Boolean to check if bin is invalid
         
         # CASE 1: The first right exon is smaller than the first left exon
-        print(pairedbin)
         if left[0] > right[0]:
             x = left
             left = right
@@ -102,25 +100,27 @@ def group_pairs(pairedbins):
             x = left
             left = right
             right = x
-        
+        j = 0
         for i in range(0,len(left)):
-            if left[i] == right[0]:
-                right.pop(0)
-                if len(right) > 0:
-                    if i!=(len(left)-1) and left[i+1] != right[0]:
+            if left[i] == right[j]:
+                j += 1
+                if len(right) > j+1:
+                    if i!=(len(left)-1) and left[i+1] != right[j]:
                         invalid = True
                         break  
-            if len(right) == 0:
-                break
+                else:
+                    break
         if invalid == True:
             continue
-        if len(right) == 0:
+        if len(right) == 0 or len(left) == 0:
             continue
-        if right[0] < left[len(left)-1]:
+        if right[0] < left[len(left)-1] and right[0] not in left:
             continue
         if len(right) == 1 and len(left) == 1 and left[0] + 1 == right[0]:
             continue
-
+        if len(right) == 1 and right[0] in left:
+            continue
+        
         left = tuple(left) # Tuples as keys
         if left in group_dict.keys():
             right_exons = group_dict[left]
