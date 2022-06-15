@@ -69,7 +69,7 @@ def get_pairedbins(graph,pairedbins,multibins):
             continue
 
         # Path enumeration between left and right exons is carried out to find all possible connections
-        new_pairedbins = path_enumeration.enumeration_bins2(graph,new_pairedbins,start_node,[start_node],[],multibins,end_node)
+        new_pairedbins = path_enumeration.enumeration_bins2(graph,new_pairedbins,start_node,[start_node],[],multibins,end_node,True)
             
         # Bins have to be completed by adding the missing start and end exons
         for i in range(len(new_pairedbins)):
@@ -82,8 +82,6 @@ def get_pairedbins(graph,pairedbins,multibins):
             if (len(new_bin.exons) > 2):
                 all_pairedbins.append(new_bin)
     return all_pairedbins
-
-
 
 # GROUP PAIRS FUNCTION
 """
