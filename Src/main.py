@@ -1,18 +1,22 @@
 import sys, ast, os
 import networkx as nx
-from collections import namedtuple
-from PathEnumeration import fullPathEnumeration, activeBinPathEnumeration, activeBinPathEnumeration2, activeBinPathEnumeration3, getMultiBins
-from PathEnumeration_old import activeMultiBinPathEnumeration
-from PairedBinsToBins import fromPairedBinsToBins, checkPairedBins
+from PathEnumeration import activeBinPathEnumeration3, getMultiBins
 from PostFilterPairedBin import groupPairedBins, eliminateInvalidPaths
 from PairedBinsToBins_short import fromPairedBinsToBinsShort
 from parse_graph_list_commented_Arbeitsdatei import parse_meta, parse_bins, parse_pairs, parse_graph, write_valid_gtf_entry, nodepath_to_transcript
 from copy import deepcopy
+from linearProgramming import addCounts, optimizeTranscripts, createAlphaIJMatrix, createAlphaIJDict
+import numpy as np
+import gurobipy as gp
+from gurobipy import *
+import math
+
+#from printGraph import writeGeneToGraph
 
 dummyf = open("dummyout.gtf", "w")                                                                                              # output for the dummy code
 dummyGeneCounter = 0
 
-with open('test.graph') as f:
+with open('test3.graph') as f:
     fileEndReached = False
     f.readline()                                                                                                    #skip ---- seperator line
     
@@ -20,6 +24,7 @@ with open('test.graph') as f:
     paths = {}
     filteredPaths = {}
     pairedBinDict = {}
+    exonSpliceJunctionCountDict = {}
 
     #Define necessary lists
     pfadListe = []
@@ -56,31 +61,68 @@ with open('test.graph') as f:
         validPathNumber = [0]
         pairedBinsCopy = deepcopy(PairedBins)
 
-        # 1. Get MultiBins only from Bins
+        # # 1. Get MultiBins only from Bins
         MultiBins = getMultiBins(Bins)
 
-        # 3. Add PairedBins to MultiBins
-        #MultiBins, gepaarteBins = fromPairedBinsToBinsShort(PairedBins, MultiBins, G_clean, Exons, True)
+        # # 3. Add PairedBins to MultiBins
+        MultiBins, gepaarteBins = fromPairedBinsToBinsShort(PairedBins, MultiBins, G_clean, Exons, True)
         
-        # 4. Enumerate Paths with ActiveBinPathEnumeration3
+        # # 4. Enumerate Paths with ActiveBinPathEnumeration3
         paths['Gene' + str(geneCounter)] = activeBinPathEnumeration3('1', '0', ['0'], {}, enumerationPathNumber, [], G_clean, MultiBins)
 
-        # 4a Enumerate paths with ActiveBinPathEnumeration3 (Bins)
-        #paths['Gene' + str(geneCounter)] = activeBinPathEnumeration3('1', '0', ['0'], {}, enumerationPathNumber, [], G_clean, MultiBins)
+        # # 4a Enumerate paths with ActiveBinPathEnumeration3 (Bins)
+        # #paths['Gene' + str(geneCounter)] = activeBinPathEnumeration3('1', '0', ['0'], {}, enumerationPathNumber, [], G_clean, MultiBins)
 
-        # 5. Group paired Bins to filter valid paths after Enumeration 
+        # # 5. Group paired Bins to filter valid paths after Enumeration 
         groupedPairedBins = groupPairedBins(pairedBinsCopy)
-
-        # 6. Filter invalid Paths
-        #filteredPaths['Gene' + str(geneCounter)] = eliminateInvalidPaths(paths['Gene' + str(geneCounter)], groupedPairedBins, validPathNumber)
         
-        # 7. Increase geneCounter
-        geneCounter = geneCounter + 1
+        # # 6. Filter invalid Paths
+        filteredPaths['Gene' + str(geneCounter)] = eliminateInvalidPaths(paths['Gene' + str(geneCounter)], groupedPairedBins, validPathNumber)
 
-        # 8. Count paths
+        # 7. Count paths
         enumerationPathCounter = enumerationPathCounter + enumerationPathNumber[0]
         validPathCounter = validPathCounter + validPathNumber[0]
         
+        # 8. Extract Exon counts
+        exonSpliceJunctionCountDict['Gene' + str(geneCounter)] = addCounts(G_clean)
+
+        # Create np-Array
+        alphaNP = createAlphaIJMatrix(exonSpliceJunctionCountDict['Gene' + str(geneCounter)], filteredPaths['Gene' + str(geneCounter)])
+
+        #Create Dictionary
+        alphaMultiDict = createAlphaIJDict(exonSpliceJunctionCountDict['Gene' + str(geneCounter)], filteredPaths['Gene' + str(geneCounter)])
+
+        # 9. Optimize Transcripts
+        m = gp.Model()
+    
+        # define data coefficients
+    
+        features = exonSpliceJunctionCountDict['Gene' + str(geneCounter)]
+        featureList = list(features.values())
+        featureQuantity = len(featureList)
+        transcripts = list(filteredPaths['Gene' + str(geneCounter)].values())
+
+        # add decision variables
+        frequency = m.addVars(len(transcripts), vtype=gp.GRB.CONTINUOUS, name='frequency')
+        frequencySum = m.addVars(len(transcripts), vtype=gp.GRB.CONTINUOUS, name='frequencySum')
+        coverageNorms = m.addVars(featureQuantity)
+        
+
+        #formula =gp.quicksum(math.sqrt(math.pow(featureList[j] - gp.quicksum(frequency[i]*alphaNP[j][i] for i in range(len(frequency))),2)) for j in range(featureQuantity))
+        for j in range(featureQuantity):
+            frequencySum[j] = gp.quicksum(frequency[i]*alphaNP[j][i] for i in range(len(frequency)))
+        for coverage, featureCount, gamma in zip(coverageNorms.values(), featureList, frequencySum.values()):
+            z = m.addVar(lb=-gp.GRB.INFINITY)
+            m.addConstr(z==featureCount - gamma)
+            m.addGenConstrAbs(coverage, z, 'normconstraint')
+        m.setObjective(coverageNorms.sum(), gp.GRB.MINIMIZE)
+        m.optimize()
+        for v in m.getVars():
+            print(v.varName, v.x)
+
+        # 10. Increase geneCounter
+        geneCounter = geneCounter + 1
+
         # All Paths Enumeration
 
         # Note: source and drain are ALWAYS named "0" and "1" respectively
@@ -93,7 +135,7 @@ with open('test.graph') as f:
         #Access Edge Types : G.edges[n1 , n2]['type'] == "Exon" || "SpliceJunction" || "Helper"
         #Access Main Coverage Count of an Edge : G.edges[n1 , n2]['counts']['c']
         #Access Exon length G.edges[n1 , n2]['length']
-        
+
         #Source Node s is always G.nodes['0']
         #Drain Node t is always G.nodes['1']
         
@@ -106,5 +148,3 @@ with open('test.graph') as f:
         dummyGeneCounter = dummyGeneCounter + 1
 
 dummyf.close()
-print(enumerationPathCounter)
-print(enumerationPathCounter-validPathCounter)

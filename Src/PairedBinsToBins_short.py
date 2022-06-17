@@ -1,15 +1,6 @@
 #!/usr/bin/env python
 
-from itertools import count
-from re import X
-import sys, ast, os
-from xmlrpc.client import Boolean, boolean
-import networkx as nx
 from collections import namedtuple
-
-from sqlalchemy import false
-from sympy import continued_fraction
-from parse_graph_list_commented_Arbeitsdatei import nodepath_to_transcript
 from PathEnumeration import activeBinPathEnumeration3
 
 def getBins(Bins:list):

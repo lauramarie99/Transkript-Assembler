@@ -46,21 +46,35 @@ def groupPairedBins(pairedBins):
         # No Triming
         j = 0
         incorrectPairedBinBoolean = False
-        for i in range (0, len(leftExons)):                                                                                    
+
+        for i in range (0, len(leftExons)):
             if rightExons[j] == leftExons[i]:
-                if j == len(rightExons)-1:
-                    rightExons.pop(j-1)                                                                                        # Match: (e. g. case 11)
+                if len(rightExons) == 1:
+                    rightExons.pop(0)
                     break
-                j = j+1                                                                                                         # Remove firstRightExon
-                if j < len(rightExons)-1:                                                                                       # If there's a remaining Exon in rightExons
-                    if i<len(leftExons)-1: 
-                        if leftExons[i+1] != rightExons[j]:                                                                     # check, whether there are additional elements in both, leftExons and rightExons                                                                                             # successors miss-match
-                            incorrectPairedBinBoolean = True                                                                    # report it via incorrectpairedBinBoolean
-                            break
-                        elif leftExons[i+1] == rightExons[j]:
-                            rightExons.pop(j-1)                                               
-                else:                                                                                                           # If rightExons is empty exit for-loop
-                    break                                                                                                       # Exit for-loop (since whileLoopBreakBoolean was initialized with False -> while-loop will not be exited)                                                                                                                                                    
+                j=j+1
+                if j < len(rightExons)-1:
+                    if i <len(leftExons)-1 and (leftExons[i+1] != rightExons[j]):
+                        incorrectPairedBinBoolean = True
+                        break
+                else:
+                    break
+            
+        # for i in range (0, len(leftExons)):                                                                                    
+        #     if rightExons[j] == leftExons[i]:
+        #         if j == len(rightExons)-1:
+        #             rightExons.pop(j-1)                                                                                        # Match: (e. g. case 11)
+        #             break
+        #         j = j+1                                                                                                         # Remove firstRightExon
+        #         if j < len(rightExons)-1:                                                                                       # If there's a remaining Exon in rightExons
+        #             if i<len(leftExons)-1: 
+        #                 if leftExons[i+1] != rightExons[j]:                                                                     # check, whether there are additional elements in both, leftExons and rightExons                                                                                             # successors miss-match
+        #                     incorrectPairedBinBoolean = True                                                                    # report it via incorrectpairedBinBoolean
+        #                     break
+        #                 elif leftExons[i+1] == rightExons[j]:
+        #                     rightExons.pop(j-1)                                               
+        #         else:                                                                                                           # If rightExons is empty exit for-loop
+        #             break                                                                                                       # Exit for-loop (since whileLoopBreakBoolean was initialized with False -> while-loop will not be exited)                                                                                                                                                    
             
         if incorrectPairedBinBoolean == True:                                                                                   # If an incorrect PairedBin has been found, discard it 
             continue

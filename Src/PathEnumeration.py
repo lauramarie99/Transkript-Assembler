@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 
 import sys, ast, os
-import networkx as nx
 from collections import namedtuple
 
-from sqlalchemy import false
 from parse_graph_list_commented_Arbeitsdatei import nodepath_to_transcript
    
 # Get new Bins without MultiBinRestriction
