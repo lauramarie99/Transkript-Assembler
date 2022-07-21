@@ -144,9 +144,6 @@ def nodepath_to_transcript(G, path):
 dummyf = open("dummyout.gtf", "w")  # output for the dummy code
 dummyGeneCounter = 0
 
-gene_id = 0
-testf = open("test.gtf", "w") 
-
 with open(sys.argv[1]) as f:
     fileEndReached = False
     f.readline() #skip ---- seperator line
@@ -165,7 +162,6 @@ with open(sys.argv[1]) as f:
         if not fileEndReached and not skip:
             G_clean = nx.DiGraph()
             fileEndReached, _ = parse_graph(f, G_clean, Exons)
-            # Graph zeichnen
             # nx.draw_networkx(G_clean, with_labels=True, arrowsize=12)
             # plt.show()
         # Note: source and drain are ALWAYS named "0" and "1" respectively
@@ -174,18 +170,6 @@ with open(sys.argv[1]) as f:
             # handle the rare case that noise deletion removes the whole second graph
 
         # TODO WORK WITH THE GRAPH HERE
-        
-        paths = []
-        paths = path_enumeration.enumeration(G_clean,paths,"0",["0"])
-        print(paths)
-         
-        gene_id += 1
-        transkript_id = 0
-        for path in paths:
-            transkript_id += 1
-            transkript = nodepath_to_transcript(G_clean, path)
-            print(transkript)
-            write_valid_gtf_entry(testf,Chromosome,Strand,Exons,transkript,"Gene"+str(gene_id),"Transcript"+str(transkript_id))
 
         #Access Edge Types : G.edges[n1 , n2]['type'] == "Exon" || "SpliceJunction" || "Helper"
         #Access Main Coverage Count of an Edge : G.edges[n1 , n2]['counts']['c']
@@ -202,5 +186,4 @@ with open(sys.argv[1]) as f:
         dummyGeneCounter = dummyGeneCounter + 1
         
 dummyf.close()
-testf.close()
 """
