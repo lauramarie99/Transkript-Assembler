@@ -6,7 +6,8 @@ import pairedbin_enumeration
 import networkx as nx
 import time
 import matplotlib.pyplot as plt
-from copy import deepcopy
+from copy import deepcopy 
+import optimize
 
 # VARIABLES
 start = time.time()
