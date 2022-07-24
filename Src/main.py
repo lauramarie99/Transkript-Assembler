@@ -80,6 +80,15 @@ with open(sys.argv[1]) as f:
             transcript_id += 1
             parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(gene_id),"Transcript"+str(transcript_id))
         """
+        
+        # Optimization 
+        """
+        transcripts = path_enumeration.enumeration(G_clean, [], "0", ["0"], "1", False)
+        print(optimize.model(G_clean, transcripts))
+        #get dictionary with expression levels (F=(f1,f2,f3,...fN))
+        var_dict = optimize.model(G_clean, transcripts)
+        """
+
 
     # PRINT RESULTS  
     end = time.time()
