@@ -1,150 +1,98 @@
-import sys, ast, os
+# IMPORT
+import sys
+import parse_graph_new
+import path_enumeration
+import pairedbin_enumeration
 import networkx as nx
-from PathEnumeration import activeBinPathEnumeration3, getMultiBins
-from PostFilterPairedBin import groupPairedBins, eliminateInvalidPaths
-from PairedBinsToBins_short import fromPairedBinsToBinsShort
-from parse_graph_list_commented_Arbeitsdatei import parse_meta, parse_bins, parse_pairs, parse_graph, write_valid_gtf_entry, nodepath_to_transcript
-from copy import deepcopy
-from linearProgramming import addCounts, optimizeTranscripts, createAlphaIJMatrix, createAlphaIJDict
-import numpy as np
-import gurobipy as gp
-from gurobipy import *
-import math
+import time
+import matplotlib.pyplot as plt
+from copy import deepcopy 
+import optimize
 
-#from printGraph import writeGeneToGraph
+# VARIABLES
+start = time.time()
+no_trans = 0
+#gene_id = 0
+#file_gtf = open("transcripts.gtf", "w") 
 
-dummyf = open("dummyout.gtf", "w")                                                                                              # output for the dummy code
-dummyGeneCounter = 0
-
-with open('test3.graph') as f:
+# MAIN
+with open(sys.argv[1]) as f:
     fileEndReached = False
-    f.readline()                                                                                                    #skip ---- seperator line
-    
-    # Define necessary Dictionaries                                                                                                     
-    paths = {}
-    filteredPaths = {}
-    pairedBinDict = {}
-    exonSpliceJunctionCountDict = {}
-
-    #Define necessary lists
-    pfadListe = []
-
-    # Define necessary Integer Varibales
-    geneCounter = 0
-    enumerationPathCounter = 0
-    validPathCounter = 0
-    
+    f.readline() #skip ---- seperator line
     while not fileEndReached:
-        f.readline()                                                                                                # skip ==META: Read this line, but don't do anything
-        Chromosome, Strand, Exons = parse_meta(f)                                                                   # Übergib f jetzt an def parse_meta, um Metadaten auszulesen und schreib diese in Chromosome, 
-                                                                                                                    # Strand und Exons (Listen)
-        Bins = parse_bins(f)                                                                                        # Lies die BINS aus f mit Hilfe der parse_bin(f) Funktion aus und schreib sie in Bins
-        PairedBins = parse_pairs(f)
         
-        G_full = nx.DiGraph()                                                                                       # Erzeug einen Diagraphen mit Hilfe von NetworkX
-        fileEndReached, skip = parse_graph(f, G_full, Exons)                                                        # Ruf die Funktion parse_graph auf, übergibt ihr das File (f, den erzeugten Graphen und zugehörige Liste 
-                                                                                                                    # mit den Exons), schreib den vollen Graphen in G_full, weise Skip einen Boolean zu, der true ist, wenn 
-                                                                                                                    # die Zeile mit - beginnt                                                                                                                                                                                                      
-        if not fileEndReached and not skip:                                                                         # Falls denoised Graph existiert, ruf wieder die Funktion Parse_Graph auf, übergib ihr das File 
-                                                                                                                    # (f, Graph_clean und zugehörige Liste mit den Exons), schreib die # denoised Informationen aus dem 
-                                                                                                                    # Graph-File in graph clean und übergib die letzte Zeile fileEndReached
-            G_clean = nx.DiGraph()                                                                                  # Erzeug einen neuen gerichteten Graphen 
-            fileEndReached, _ = parse_graph(f, G_clean, Exons)
-        
-        else:
+        # READ META AND BIN DATA FROM FILE
+        f.readline() #skip ==META 
+        Chromosome, Strand, Exons = parse_graph_new.parse_meta(f)
+        Bins = parse_graph_new.parse_bins(f)
+        PairedBins = parse_graph_new.parse_pairs(f)
+        PairedBins_copy = deepcopy(PairedBins)
+
+        # BUILD GRAPH
+        G_full = nx.DiGraph()
+        fileEndReached, skip = parse_graph_new.parse_graph(f, G_full, Exons)
+
+        if not fileEndReached and not skip:
+            G_clean = nx.DiGraph()
+            fileEndReached, _ = parse_graph_new.parse_graph(f, G_clean, Exons)
+            # nx.draw_networkx(G_clean, with_labels=True, arrowsize=12)
+            # plt.show()
+        if skip:
             G_clean = G_full
 
-        # Define necessary variables and assign
-            # pathNumbers to enumerate paths  
+        transcripts = []
         
-        enumerationPathNumber = [0]
-        validPathNumber = [0]
-        pairedBinsCopy = deepcopy(PairedBins)
-
-        # # 1. Get MultiBins only from Bins
-        MultiBins = getMultiBins(Bins)
-
-        # # 3. Add PairedBins to MultiBins
-        MultiBins, gepaarteBins = fromPairedBinsToBinsShort(PairedBins, MultiBins, G_clean, Exons, True)
+        # FULL PATH ENUMERATION
+        """
+        transcripts = path_enumeration.enumeration(G_full,[],"0",["0"],"1",True)
+        no_trans = no_trans + len(transcripts)
+        """
         
-        # # 4. Enumerate Paths with ActiveBinPathEnumeration3
-        paths['Gene' + str(geneCounter)] = activeBinPathEnumeration3('1', '0', ['0'], {}, enumerationPathNumber, [], G_clean, MultiBins)
-
-        # # 4a Enumerate paths with ActiveBinPathEnumeration3 (Bins)
-        # #paths['Gene' + str(geneCounter)] = activeBinPathEnumeration3('1', '0', ['0'], {}, enumerationPathNumber, [], G_clean, MultiBins)
-
-        # # 5. Group paired Bins to filter valid paths after Enumeration 
-        groupedPairedBins = groupPairedBins(pairedBinsCopy)
+        # MULTI BIN ENUMERATION
+        """
+        multi_bins = path_enumeration.get_multibins(Bins)
+        transcripts = path_enumeration.enumeration_bins2(G_clean,[],"0",["0"],[],multi_bins,"1",True)
+        no_trans = no_trans + len(transcripts)
+        """
         
-        # # 6. Filter invalid Paths
-        filteredPaths['Gene' + str(geneCounter)] = eliminateInvalidPaths(paths['Gene' + str(geneCounter)], groupedPairedBins, validPathNumber)
-
-        # 7. Count paths
-        enumerationPathCounter = enumerationPathCounter + enumerationPathNumber[0]
-        validPathCounter = validPathCounter + validPathNumber[0]
+        # PAIRED BIN ENUMERATION 1
+        """
+        multi_bins = path_enumeration.get_multibins(Bins)
+        paired_bins = pairedbin_enumeration.get_pairedbins(G_clean,PairedBins_copy,multi_bins)
+        transcripts = path_enumeration.enumeration_bins2(G_clean,[],"0",["0"],[],paired_bins+multi_bins,"1",True)
+        no_trans = no_trans + len(transcripts)
+        """
         
-        # 8. Extract Exon counts
-        exonSpliceJunctionCountDict['Gene' + str(geneCounter)] = addCounts(G_clean)
-
-        # Create np-Array
-        alphaNP = createAlphaIJMatrix(exonSpliceJunctionCountDict['Gene' + str(geneCounter)], filteredPaths['Gene' + str(geneCounter)])
-
-        #Create Dictionary
-        alphaMultiDict = createAlphaIJDict(exonSpliceJunctionCountDict['Gene' + str(geneCounter)], filteredPaths['Gene' + str(geneCounter)])
-
-        # 9. Optimize Transcripts
-        m = gp.Model()
-    
-        # define data coefficients
-    
-        features = exonSpliceJunctionCountDict['Gene' + str(geneCounter)]
-        featureList = list(features.values())
-        featureQuantity = len(featureList)
-        transcripts = list(filteredPaths['Gene' + str(geneCounter)].values())
-
-        # add decision variables
-        frequency = m.addVars(len(transcripts), vtype=gp.GRB.CONTINUOUS, name='frequency')
-        frequencySum = m.addVars(len(transcripts), vtype=gp.GRB.CONTINUOUS, name='frequencySum')
-        coverageNorms = m.addVars(featureQuantity)
+        # PAIRED BIN ENUMERATION 2
+        """
+        pairedbins_grouped = pairedbin_enumeration.group_pairs(PairedBins_copy)
+        multi_bins = path_enumeration.get_multibins(Bins)
+        transcripts = path_enumeration.enumeration_bins2(G_clean,[],"0",["0"],[],multi_bins,"1",True)
+        transcripts_copy = deepcopy(transcripts)
+        filtered_transcripts = pairedbin_enumeration.filter_transcripts(transcripts_copy,pairedbins_grouped)
+        no_trans = no_trans + len(filtered_transcripts)
+        """
         
-
-        #formula =gp.quicksum(math.sqrt(math.pow(featureList[j] - gp.quicksum(frequency[i]*alphaNP[j][i] for i in range(len(frequency))),2)) for j in range(featureQuantity))
-        for j in range(featureQuantity):
-            frequencySum[j] = gp.quicksum(frequency[i]*alphaNP[j][i] for i in range(len(frequency)))
-        for coverage, featureCount, gamma in zip(coverageNorms.values(), featureList, frequencySum.values()):
-            z = m.addVar(lb=-gp.GRB.INFINITY)
-            m.addConstr(z==featureCount - gamma)
-            m.addGenConstrAbs(coverage, z, 'normconstraint')
-        m.setObjective(coverageNorms.sum(), gp.GRB.MINIMIZE)
-        m.optimize()
-        for v in m.getVars():
-            print(v.varName, v.x)
-
-        # 10. Increase geneCounter
-        geneCounter = geneCounter + 1
-
-        # All Paths Enumeration
-
-        # Note: source and drain are ALWAYS named "0" and "1" respectively
-
-        #if skip:
-            # handle the rare case that noise deletion removes the whole second graph
+        # ADD TRANSCRIPTS TO GTF FILE
+        """
+        gene_id += 1
+        transcript_id = 0
+        for transcript in transcripts:
+            transcript_id += 1
+            parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(gene_id),"Transcript"+str(transcript_id))
+        """
         
+        # Optimization 
+        """
+        transcripts = path_enumeration.enumeration(G_clean, [], "0", ["0"], "1", False)
+        print(optimize.model(G_clean, transcripts))
+        #get dictionary with expression levels (F=(f1,f2,f3,...fN))
+        var_dict = optimize.model(G_clean, transcripts)
+        """
 
-        # TODO WORK WITH THE GRAPH HERE
-        #Access Edge Types : G.edges[n1 , n2]['type'] == "Exon" || "SpliceJunction" || "Helper"
-        #Access Main Coverage Count of an Edge : G.edges[n1 , n2]['counts']['c']
-        #Access Exon length G.edges[n1 , n2]['length']
 
-        #Source Node s is always G.nodes['0']
-        #Drain Node t is always G.nodes['1']
-        
-        # DUMMY Code extracts longest Path (by number of bases) and writes it to a GTF file
-        
-
-        lpath = nx.dag_longest_path(G_full, weight="length")
-        transcript = nodepath_to_transcript(G_full, lpath)
-        write_valid_gtf_entry(dummyf, Chromosome, Strand, Exons, transcript, "Gene"+str(dummyGeneCounter), "Transcript"+str(dummyGeneCounter)+".1")
-        dummyGeneCounter = dummyGeneCounter + 1
-
-dummyf.close()
+    # PRINT RESULTS  
+    end = time.time()
+    print("Gesamtanzahl Transkripte: ", no_trans)
+    print('{:5.3f}s'.format(end-start))       
+    #file_gtf.close()

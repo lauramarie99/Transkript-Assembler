@@ -3,6 +3,8 @@
 import sys, ast, os
 import networkx as nx
 from collections import namedtuple
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 
 ExonT = namedtuple('ExonT', 'leftPos rightPos')
 BinT = namedtuple('BinT', 'exons count')
@@ -97,7 +99,7 @@ def parse_graph(f, G, Exons):
     f.readline()
     line = f.readline()
     
-    return line == ""
+    return line == "", line.startswith('-')
 
 
 # f ..  file to write to
@@ -110,7 +112,7 @@ def parse_graph(f, G, Exons):
 def write_valid_gtf_entry(f, chrom, strand, exons, transcript, geneId, transcriptId):
 
     # write transcript group line
-    f.write(chrom+"\tFortgMethoden\ttranscript\t"+str(exons[transcript[0]].leftPos)+"\t"+str(exons[transcript[-1]].rightPos)+"\t0\t"+strand+'\t.\t+gene_id "'+geneId+'; transcript_id "'+transcriptId+'";\n')
+    f.write(chrom+"\tFortgMethoden\ttranscript\t"+str(exons[transcript[0]].leftPos)+"\t"+str(exons[transcript[-1]].rightPos)+"\t0\t"+strand+'\t.\tgene_id "'+geneId+'"; transcript_id "'+transcriptId+'";\n')
 
     # write each exon in order, directly adjacent exons need to be joined
     
@@ -120,11 +122,11 @@ def write_valid_gtf_entry(f, chrom, strand, exons, transcript, geneId, transcrip
         if exons[ti].leftPos == right + 1: # adjacent, extend
             right = exons[ti].rightPos
         else:
-            f.write(chrom+"\tFortgMethoden\texon\t"+str(left)+"\t"+str(right)+"\t0\t"+strand+'\t.\t+gene_id "'+geneId+'; transcript_id "'+transcriptId+'";\n')    
+            f.write(chrom+"\tFortgMethoden\texon\t"+str(left)+"\t"+str(right)+"\t0\t"+strand+'\t.\tgene_id "'+geneId+'"; transcript_id "'+transcriptId+'";\n')    
             left = exons[ti].leftPos
             right = exons[ti].rightPos 
                    
-    f.write(chrom+"\tFortgMethoden\texon\t"+str(left)+"\t"+str(right)+"\t0\t"+strand+'\t.\t+gene_id "'+geneId+'; transcript_id "'+transcriptId+'";\n')    
+    f.write(chrom+"\tFortgMethoden\texon\t"+str(left)+"\t"+str(right)+"\t0\t"+strand+'\t.\tgene_id "'+geneId+'"; transcript_id "'+transcriptId+'";\n')    
 
 
 def nodepath_to_transcript(G, path):
@@ -137,6 +139,8 @@ def nodepath_to_transcript(G, path):
     return transcript
     
 
+# Workflow
+"""
 dummyf = open("dummyout.gtf", "w")  # output for the dummy code
 dummyGeneCounter = 0
 
@@ -146,16 +150,27 @@ with open(sys.argv[1]) as f:
     while not fileEndReached:
         f.readline() #skip ==META 
         Chromosome, Strand, Exons = parse_meta(f)
+        print(Chromosome)
         Bins = parse_bins(f)
+        print("Bins:", Bins)
         PairedBins = parse_pairs(f)
+        print("Paired-Bins:", PairedBins)
+        
         G_full = nx.DiGraph()
-        parse_graph(f, G_full, Exons)
-        G_clean = nx.DiGraph()
-        fileEndReached = parse_graph(f, G_clean, Exons)
+        fileEndReached, skip = parse_graph(f, G_full, Exons)
+
+        if not fileEndReached and not skip:
+            G_clean = nx.DiGraph()
+            fileEndReached, _ = parse_graph(f, G_clean, Exons)
+            # nx.draw_networkx(G_clean, with_labels=True, arrowsize=12)
+            # plt.show()
         # Note: source and drain are ALWAYS named "0" and "1" respectively
 
+        #if skip:
+            # handle the rare case that noise deletion removes the whole second graph
+
         # TODO WORK WITH THE GRAPH HERE
-        
+
         #Access Edge Types : G.edges[n1 , n2]['type'] == "Exon" || "SpliceJunction" || "Helper"
         #Access Main Coverage Count of an Edge : G.edges[n1 , n2]['counts']['c']
         #Access Exon length G.edges[n1 , n2]['length']
@@ -164,9 +179,11 @@ with open(sys.argv[1]) as f:
         #Drain Node t is always G.nodes['1']
         
         # DUMMY Code extracts longest Path (by number of bases) and writes it to a GTF file
+
         lpath = nx.dag_longest_path(G_full, weight="length")
         transcript = nodepath_to_transcript(G_full, lpath)
         write_valid_gtf_entry(dummyf, Chromosome, Strand, Exons, transcript, "Gene"+str(dummyGeneCounter), "Transcript"+str(dummyGeneCounter)+".1")
         dummyGeneCounter = dummyGeneCounter + 1
-
+        
 dummyf.close()
+"""
