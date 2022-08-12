@@ -8,6 +8,7 @@ import time
 import matplotlib.pyplot as plt
 from copy import deepcopy 
 import optimize
+from flowProblem import writeGStar
 
 # VARIABLES
 start = time.time()
