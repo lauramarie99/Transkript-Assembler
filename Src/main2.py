@@ -30,7 +30,7 @@ if(sys.argv[1] =="-help"):
     print("-paired2 for second paired bin enumaration function")
     print("-opt for optimization function and to gain expression levels")
     print("--> requires prior specification of enumaration type")
-    print("--> example: main.py Test.graph -paired -opt") 
+    print("--> example: main.py Test.graph -paired -opt")
     print("--> results are stored in same folder as save.jsn")
     print("-fullgraph: combine with other arguments to use the full graph (cleaned graph is used otherwise)")
 else:
@@ -177,6 +177,7 @@ else:
                     start_gene = time.time()
                     print(f"Time for gene: {time_for_gene:.4f}s")
                     time_left = num_genes - len(data_dict) * time_for_gene
+                    print(f"Time left:{time_left // 60 // 60:.0f}h {time_left // 60 % 60:.0f}m {time_left % 60:.0f}s")
                     with open("save.json", 'w') as file:
                         json.dump(data_dict, file)
 
