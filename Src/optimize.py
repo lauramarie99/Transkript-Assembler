@@ -27,6 +27,7 @@ def model(G_clean, transcripts):
 
     #create model for gurobi
     model = gp.Model("Transcript Expression")
+    model.Params.LogToConsole = 0
     # Add variables
     no_trans = range(len(transcripts))
     vars = model.addVars(no_trans, vtype=GRB.CONTINUOUS, name="expression_levels", lb=0.0)
@@ -52,8 +53,8 @@ def model(G_clean, transcripts):
     # Print results
     var_dict = {}
     for var in model.getVars():
-        print(var.varName)
-        print(var.X)
+        #print(var.varName)
+        #print(var.X)
         if "expression_levels" in var.varName:
             var_dict[var.varName] = var.X
     return var_dict

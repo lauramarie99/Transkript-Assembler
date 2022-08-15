@@ -21,6 +21,8 @@ data_dict = dict()
 #read in file to estimate calc time:
 
 # MAIN
+#prints out usage instructions
+
 if(sys.argv[1] =="-help"):
     print("usage: type python main.py [input graph] [arguments]")
     print("arguments:")
@@ -33,13 +35,15 @@ if(sys.argv[1] =="-help"):
     print("--> example: main.py Test.graph -paired -opt")
     print("--> results are stored in same folder as save.jsn")
     print("-fullgraph: combine with other arguments to use the full graph (cleaned graph is used otherwise)")
+
+#read in file to estimate calculation time
 else:
     with open(sys.argv[1]) as file:
         lines = file.readlines()
         num_genes = len([line for line in lines if "--------------" in line])
 
 
-
+#read in file for parsing
     with open(sys.argv[1]) as f:
         fileEndReached = False
         f.readline()  # skip ---- seperator line
@@ -63,27 +67,26 @@ else:
                 # plt.show()
             if skip:
                 G_clean = G_full
-
+#alll functions with clean graph
             transcripts = []
             if ("-fullgraph" not in sys.argv):
                 # FULL PATH ENUMERATION
-                if (sys.argv[2] =="-full"):
+                if ("-full" in sys.argv):
 
                     transcripts = path_enumeration.enumeration(G_clean,[],"0",["0"],"1",False)
                     transcripts_edge = path_enumeration.enumeration(G_clean, [], "0", ["0"], "1", True)
                     no_trans = no_trans + len(transcripts)
 
-                if (sys.argv[2] == "-multi"):
                 # MULTI BIN ENUMERATION
+                if ("-multi" in sys.argv):
+
                     multi_bins = path_enumeration.get_multibins(Bins)
                     transcripts = path_enumeration.enumeration_bins2(G_clean,[],"0",["0"],[],multi_bins,"1",False)
                     transcripts_edge = path_enumeration.enumeration_bins2(G_clean, [], "0", ["0"], [], multi_bins, "1", True)
-
                     no_trans = no_trans + len(transcripts)
 
-
                 # PAIRED BIN ENUMERATION 1
-                elif(sys.argv[2] =="-paired"):
+                elif("-paired" in sys.argv):
 
                     multi_bins = path_enumeration.get_multibins(Bins)
                     paired_bins = pairedbin_enumeration.get_pairedbins(G_clean,PairedBins_copy,multi_bins)
@@ -93,7 +96,7 @@ else:
 
 
                 # PAIRED BIN ENUMERATION 2
-                elif(sys.argv[2] == "-paired2"):
+                elif("-paired2" in sys.argv):
 
                     pairedbins_grouped = pairedbin_enumeration.group_pairs(PairedBins_copy)
                     multi_bins = path_enumeration.get_multibins(Bins)
@@ -106,8 +109,10 @@ else:
                 # Optimization
                 if("-opt" in sys.argv):
                     var_dict = optimize.model(G_clean, transcripts)
+                    #create list that contains transcripts from all genes and their expression levels. List contains dictionary where key is the gene number (position in file) and values are transcripts and expression levels
                     data = [(transcripts_edge[i], var_dict[f"expression_levels[{i}]"]) for i in range(len(transcripts_edge))]
                     data_dict[len(data_dict)] = data
+                    #function to estimate calculation time
                     os.system('clear')
                     print(f"Gene {len(data_dict)} of {num_genes} done.")
                     end_gene = time.time()
@@ -116,6 +121,7 @@ else:
                     print(f"Time for gene: {time_for_gene:.4f}s")
                     time_left = num_genes - len(data_dict) * time_for_gene
                     print(f"Time left:{time_left // 60 // 60:.0f}h {time_left // 60 % 60:.0f}m {time_left % 60:.0f}s")
+                    #save transcripts and their expression levels
                     with open("save.json", 'w') as file:
                         json.dump(data_dict, file)
 
@@ -129,13 +135,15 @@ else:
                         parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(gene_id),"Transcript"+str(transcript_id))
                 """
             else:
-                if (sys.argv[2] =="-full"):
+                #code replication from above
+                #here we use G_full instead of G_clean
+                if ("-full" in sys.argv):
 
                     transcripts = path_enumeration.enumeration(G_full,[],"0",["0"],"1",False)
                     transcripts_edge = path_enumeration.enumeration(G_full, [], "0", ["0"], "1", True)
                     no_trans = no_trans + len(transcripts)
 
-                if (sys.argv[2] == "-multi"):
+                if ("-multi" in sys.argv):
                 # MULTI BIN ENUMERATION
                     multi_bins = path_enumeration.get_multibins(Bins)
                     transcripts = path_enumeration.enumeration_bins2(G_full,[],"0",["0"],[],multi_bins,"1",False)
@@ -145,7 +153,7 @@ else:
 
 
                 # PAIRED BIN ENUMERATION 1
-                elif(sys.argv[2] =="-paired"):
+                elif("-paired" in sys.argv):
 
                     multi_bins = path_enumeration.get_multibins(Bins)
                     paired_bins = pairedbin_enumeration.get_pairedbins(G_full,PairedBins_copy,multi_bins)
@@ -155,7 +163,7 @@ else:
 
 
                 # PAIRED BIN ENUMERATION 2
-                elif(sys.argv[2] == "-paired2"):
+                elif("-paired2" in sys.argv):
 
                     pairedbins_grouped = pairedbin_enumeration.group_pairs(PairedBins_copy)
                     multi_bins = path_enumeration.get_multibins(Bins)
