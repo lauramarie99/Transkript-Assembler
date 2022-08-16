@@ -97,8 +97,8 @@ else:
 
                 multi_bins = path_enumeration.get_multibins(Bins)
                 paired_bins = pairedbin_enumeration.get_pairedbins(Graph,PairedBins_copy,multi_bins)
-                transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],paired_bins+multi_bins,"1",True)
-                transcripts_edge = path_enumeration.enumeration_bins2(Graph, [], "0", ["0"], [], paired_bins + multi_bins, "1", False)
+                transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],paired_bins+multi_bins,"1",False)
+                transcripts_edge = path_enumeration.enumeration_bins2(Graph, [], "0", ["0"], [], paired_bins + multi_bins, "1", True)
                 no_trans = no_trans + len(transcripts)
 
 
@@ -107,8 +107,8 @@ else:
 
                 pairedbins_grouped = pairedbin_enumeration.group_pairs(PairedBins_copy)
                 multi_bins = path_enumeration.get_multibins(Bins)
-                transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],multi_bins,"1",True)
-                transcripts_edge = path_enumeration.enumeration_bins2(Graph, [], "0", ["0"], [], multi_bins, "1", False)
+                transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],multi_bins,"1",False)
+                transcripts_edge = path_enumeration.enumeration_bins2(Graph, [], "0", ["0"], [], multi_bins, "1", True)
                 transcripts_copy = deepcopy(transcripts)
                 filtered_transcripts = pairedbin_enumeration.filter_transcripts(transcripts_copy,pairedbins_grouped)
                 no_trans = no_trans + len(filtered_transcripts)
@@ -117,18 +117,20 @@ else:
             if("-opt" in sys.argv):
                 if("-norm0" in sys.argv and "-constr0" in sys.argv):
                     var_dict = optimize.model(Graph, transcripts, "L0", "L0", len(transcripts)/2)
-                elif ("-norm0" in sys.argv and "-constr1" in sys.argv):
+                if ("-norm0" in sys.argv and "-constr1" in sys.argv):
                     var_dict = optimize.model(Graph, transcripts, "L0", "L1", 200)
-                elif ("-norm1" in sys.argv and "-constr0" in sys.argv):
+                if ("-norm1" in sys.argv and "-constr0" in sys.argv):
                     var_dict = optimize.model(Graph, transcripts, "L1", "L0", len(transcripts)/2)
-                elif ("-norm1" in sys.argv and "-constr1" in sys.argv):
+                if ("-norm1" in sys.argv and "-constr1" in sys.argv):
                     var_dict = optimize.model(Graph, transcripts, "L1", "L1", 200)
-                elif ("-norm2" in sys.argv and "-constr0" in sys.argv):
+                    checkbox = 2
+                if ("-norm2" in sys.argv and "-constr0" in sys.argv):
                     var_dict = optimize.model(Graph, transcripts, "L2", "L0", len(transcripts)/2)
-                elif ("-norm2" in sys.argv and "-constr1" in sys.argv):
+                if ("-norm2" in sys.argv and "-constr1" in sys.argv):
                     var_dict = optimize.model(Graph, transcripts, "L2", "L1", 200)
                 else:
                     var_dict = optimize.model(Graph, transcripts, "L1", "L0", len(transcripts)/2)
+
 
                 #create list that contains transcripts from all genes and their expression levels. List contains dictionary where key is the gene number (position in file) and values are transcripts and expression levels
                 data = [(transcripts_edge[i], var_dict[f"expression_levels[{i}]"]) for i in range(len(transcripts_edge))]
