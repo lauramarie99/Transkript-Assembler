@@ -26,13 +26,14 @@ data_dict = dict()
 if(sys.argv[1] =="-help"):
     print("usage: type python main.py [input graph] [arguments]")
     print("arguments:")
-    print("-full for full path enumaration")
-    print("-multi for multi bin enumaration")
-    print("-paired for paired bin enumaration")
-    print("-paired2 for second paired bin enumaration function")
+    print("-full for full path enumeration")
+    print("-multi for multi bin enumeration")
+    print("-paired for paired bin enumeration")
+    print("-paired2 for second paired bin enumeration function")
     print("-opt for optimization function and to gain expression levels")
-    print("--> requires prior specification of enumaration type")
-    print("--> example: main.py Test.graph -paired -opt")
+    print("--> requires prior specification of enumeration type")
+    print("--> specification of norm and sparsity constraint")
+    print("--> example: main.py Test.graph -paired -opt -norm1 -constr0")
     print("--> results are stored in same folder as save.jsn")
     print("-fullgraph: combine with other arguments to use the full graph (cleaned graph is used otherwise)")
 
@@ -67,63 +68,84 @@ else:
                 # plt.show()
             if skip:
                 G_clean = G_full
-#alll functions with clean graph
+
             transcripts = []
-            if ("-fullgraph" not in sys.argv):
-                # FULL PATH ENUMERATION
-                if ("-full" in sys.argv):
+            Graph = None
+            
+            if("-fullgraph" in sys.argv):
+                Graph = G_full
+            else:
+                Graph = G_clean
 
-                    transcripts = path_enumeration.enumeration(G_clean,[],"0",["0"],"1",False)
-                    transcripts_edge = path_enumeration.enumeration(G_clean, [], "0", ["0"], "1", True)
-                    no_trans = no_trans + len(transcripts)
+            # FULL PATH ENUMERATION
+            if ("-full" in sys.argv):
 
-                # MULTI BIN ENUMERATION
-                if ("-multi" in sys.argv):
+                transcripts = path_enumeration.enumeration(Graph,[],"0",["0"],"1",False)
+                transcripts_edge = path_enumeration.enumeration(Graph, [], "0", ["0"], "1", True)
+                no_trans = no_trans + len(transcripts)
 
-                    multi_bins = path_enumeration.get_multibins(Bins)
-                    transcripts = path_enumeration.enumeration_bins2(G_clean,[],"0",["0"],[],multi_bins,"1",False)
-                    transcripts_edge = path_enumeration.enumeration_bins2(G_clean, [], "0", ["0"], [], multi_bins, "1", True)
-                    no_trans = no_trans + len(transcripts)
+            # MULTI BIN ENUMERATION
+            if ("-multi" in sys.argv):
 
-                # PAIRED BIN ENUMERATION 1
-                elif("-paired" in sys.argv):
+                multi_bins = path_enumeration.get_multibins(Bins)
+                transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],multi_bins,"1",False)
+                transcripts_edge = path_enumeration.enumeration_bins2(Graph, [], "0", ["0"], [], multi_bins, "1", True)
+                no_trans = no_trans + len(transcripts)
 
-                    multi_bins = path_enumeration.get_multibins(Bins)
-                    paired_bins = pairedbin_enumeration.get_pairedbins(G_clean,PairedBins_copy,multi_bins)
-                    transcripts = path_enumeration.enumeration_bins2(G_clean,[],"0",["0"],[],paired_bins+multi_bins,"1",True)
-                    transcripts_edge = path_enumeration.enumeration_bins2(G_clean, [], "0", ["0"], [], paired_bins + multi_bins, "1", False)
-                    no_trans = no_trans + len(transcripts)
+            # PAIRED BIN ENUMERATION 1
+            elif("-paired" in sys.argv):
+
+                multi_bins = path_enumeration.get_multibins(Bins)
+                paired_bins = pairedbin_enumeration.get_pairedbins(Graph,PairedBins_copy,multi_bins)
+                transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],paired_bins+multi_bins,"1",True)
+                transcripts_edge = path_enumeration.enumeration_bins2(Graph, [], "0", ["0"], [], paired_bins + multi_bins, "1", False)
+                no_trans = no_trans + len(transcripts)
 
 
-                # PAIRED BIN ENUMERATION 2
-                elif("-paired2" in sys.argv):
+            # PAIRED BIN ENUMERATION 2
+            elif("-paired2" in sys.argv):
 
-                    pairedbins_grouped = pairedbin_enumeration.group_pairs(PairedBins_copy)
-                    multi_bins = path_enumeration.get_multibins(Bins)
-                    transcripts = path_enumeration.enumeration_bins2(G_clean,[],"0",["0"],[],multi_bins,"1",True)
-                    transcripts_edge = path_enumeration.enumeration_bins2(G_clean, [], "0", ["0"], [], multi_bins, "1", False)
-                    transcripts_copy = deepcopy(transcripts)
-                    filtered_transcripts = pairedbin_enumeration.filter_transcripts(transcripts_copy,pairedbins_grouped)
-                    no_trans = no_trans + len(filtered_transcripts)
+                pairedbins_grouped = pairedbin_enumeration.group_pairs(PairedBins_copy)
+                multi_bins = path_enumeration.get_multibins(Bins)
+                transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],multi_bins,"1",True)
+                transcripts_edge = path_enumeration.enumeration_bins2(Graph, [], "0", ["0"], [], multi_bins, "1", False)
+                transcripts_copy = deepcopy(transcripts)
+                filtered_transcripts = pairedbin_enumeration.filter_transcripts(transcripts_copy,pairedbins_grouped)
+                no_trans = no_trans + len(filtered_transcripts)
 
-                # Optimization
-                if("-opt" in sys.argv):
-                    var_dict = optimize.model(G_clean, transcripts)
-                    #create list that contains transcripts from all genes and their expression levels. List contains dictionary where key is the gene number (position in file) and values are transcripts and expression levels
-                    data = [(transcripts_edge[i], var_dict[f"expression_levels[{i}]"]) for i in range(len(transcripts_edge))]
-                    data_dict[len(data_dict)] = data
-                    #function to estimate calculation time
-                    os.system('clear')
-                    print(f"Gene {len(data_dict)} of {num_genes} done.")
-                    end_gene = time.time()
-                    time_for_gene = end_gene - start_gene
-                    start_gene = time.time()
-                    print(f"Time for gene: {time_for_gene:.4f}s")
-                    time_left = num_genes - len(data_dict) * time_for_gene
-                    print(f"Time left:{time_left // 60 // 60:.0f}h {time_left // 60 % 60:.0f}m {time_left % 60:.0f}s")
-                    #save transcripts and their expression levels
-                    with open("save.json", 'w') as file:
-                        json.dump(data_dict, file)
+            # OPTIMIZATION
+            if("-opt" in sys.argv):
+                if("-norm0" in sys.argv and "-constr0" in sys.argv):
+                    var_dict = optimize.model(Graph, transcripts, "L0", "L0", len(transcripts)/2)
+                elif ("-norm0" in sys.argv and "-constr1" in sys.argv):
+                    var_dict = optimize.model(Graph, transcripts, "L0", "L1", 200)
+                elif ("-norm1" in sys.argv and "-constr0" in sys.argv):
+                    var_dict = optimize.model(Graph, transcripts, "L1", "L0", len(transcripts)/2)
+                elif ("-norm1" in sys.argv and "-constr1" in sys.argv):
+                    var_dict = optimize.model(Graph, transcripts, "L1", "L1", 200)
+                elif ("-norm2" in sys.argv and "-constr0" in sys.argv):
+                    var_dict = optimize.model(Graph, transcripts, "L2", "L0", len(transcripts)/2)
+                elif ("-norm2" in sys.argv and "-constr1" in sys.argv):
+                    var_dict = optimize.model(Graph, transcripts, "L2", "L1", 200)
+                else:
+                    var_dict = optimize.model(Graph, transcripts, "L1", "L0", len(transcripts)/2)
+
+                #create list that contains transcripts from all genes and their expression levels. List contains dictionary where key is the gene number (position in file) and values are transcripts and expression levels
+                data = [(transcripts_edge[i], var_dict[f"expression_levels[{i}]"]) for i in range(len(transcripts_edge))]
+                data_dict[len(data_dict)] = data
+
+                #function to estimate calculation time
+                os.system('clear')
+                print(f"Gene {len(data_dict)} of {num_genes} done.")
+                end_gene = time.time()
+                time_for_gene = end_gene - start_gene
+                start_gene = time.time()
+                print(f"Time for gene: {time_for_gene:.4f}s")
+                time_left = num_genes - len(data_dict) * time_for_gene
+                print(f"Time left:{time_left // 60 // 60:.0f}h {time_left // 60 % 60:.0f}m {time_left % 60:.0f}s")
+                #save transcripts and their expression levels
+                with open("save.json", 'w') as file:
+                    json.dump(data_dict, file)
 
                 # ADD TRANSCRIPTS TO GTF FILE
                 """
@@ -134,65 +156,6 @@ else:
                         transcript_id += 1
                         parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(gene_id),"Transcript"+str(transcript_id))
                 """
-            else:
-                #code replication from above
-                #here we use G_full instead of G_clean
-                if ("-full" in sys.argv):
-
-                    transcripts = path_enumeration.enumeration(G_full,[],"0",["0"],"1",False)
-                    transcripts_edge = path_enumeration.enumeration(G_full, [], "0", ["0"], "1", True)
-                    no_trans = no_trans + len(transcripts)
-
-                if ("-multi" in sys.argv):
-                # MULTI BIN ENUMERATION
-                    multi_bins = path_enumeration.get_multibins(Bins)
-                    transcripts = path_enumeration.enumeration_bins2(G_full,[],"0",["0"],[],multi_bins,"1",False)
-                    transcripts_edge = path_enumeration.enumeration_bins2(G_full, [], "0", ["0"], [], multi_bins, "1", True)
-
-                    no_trans = no_trans + len(transcripts)
-
-
-                # PAIRED BIN ENUMERATION 1
-                elif("-paired" in sys.argv):
-
-                    multi_bins = path_enumeration.get_multibins(Bins)
-                    paired_bins = pairedbin_enumeration.get_pairedbins(G_full,PairedBins_copy,multi_bins)
-                    transcripts = path_enumeration.enumeration_bins2(G_full,[],"0",["0"],[],paired_bins+multi_bins,"1",True)
-                    transcripts_edge = path_enumeration.enumeration_bins2(G_full, [], "0", ["0"], [], paired_bins + multi_bins, "1", False)
-                    no_trans = no_trans + len(transcripts)
-
-
-                # PAIRED BIN ENUMERATION 2
-                elif("-paired2" in sys.argv):
-
-                    pairedbins_grouped = pairedbin_enumeration.group_pairs(PairedBins_copy)
-                    multi_bins = path_enumeration.get_multibins(Bins)
-                    transcripts = path_enumeration.enumeration_bins2(G_full,[],"0",["0"],[],multi_bins,"1",True)
-                    transcripts_edge = path_enumeration.enumeration_bins2(G_full, [], "0", ["0"], [], multi_bins, "1", False)
-                    transcripts_copy = deepcopy(transcripts)
-                    filtered_transcripts = pairedbin_enumeration.filter_transcripts(transcripts_copy,pairedbins_grouped)
-                    no_trans = no_trans + len(filtered_transcripts)
-
-                # Optimization
-                if("-opt" in sys.argv):
-                    var_dict = optimize.model(G_full, transcripts)
-                    data = [(transcripts_edge[i], var_dict[f"expression_levels[{i}]"]) for i in range(len(transcripts_edge))]
-                    data_dict[len(data_dict)] = data
-                    os.system('clear')
-                    print(f"Gene {len(data_dict)} of {num_genes} done.")
-                    end_gene = time.time()
-                    time_for_gene = end_gene - start_gene
-                    start_gene = time.time()
-                    print(f"Time for gene: {time_for_gene:.4f}s")
-                    time_left = num_genes - len(data_dict) * time_for_gene
-                    print(f"Time left:{time_left // 60 // 60:.0f}h {time_left // 60 % 60:.0f}m {time_left % 60:.0f}s")
-                    with open("save.json", 'w') as file:
-                        json.dump(data_dict, file)
-
-
-
-
-
 
         # PRINT RESULTS
         end = time.time()
