@@ -44,7 +44,7 @@ def model(G_clean, transcripts):
         #solution from gatter
         model.addConstr(helper2[j] >= helper1[j])
         model.addConstr(helper2[j] >= -helper1[j])
-
+        print(j)
     model.setObjective(gp.quicksum(helper2[j] for j in edges), GRB.MINIMIZE)
 
     model.optimize()
@@ -54,9 +54,7 @@ def model(G_clean, transcripts):
     for var in model.getVars():
         print(var.varName)
         print(var.X)
-        if "expression_levels" in var.varName:
-            var_dict[var.varName] = var.X
-    return var_dict
+    
 
 
 
