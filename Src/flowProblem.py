@@ -15,7 +15,7 @@ def writeGStar (graph:dict):
     
     #t0Label = str(max(int(nodeNumber) for nodeNumber in graphStar.nodes.keys())+1) # set t0 label
     graphStar.add_node('t0') # Add t0
-    graphStar.add_edge('t0', '1', weight = 0, capacity=float('inf')) # add t -> t0
+    graphStar.add_edge('1', 't0', weight = 0, capacity=float('inf')) # add t -> t0
 
     graphStar.add_edge('t0', 's0', weight = 0, capacity=float('inf')) # add t0 -> s0    
     #sStarLabel = str(max(int(nodeNumber) for nodeNumber in graphStar.nodes.keys())+1) # set sStarLabel
@@ -43,29 +43,49 @@ def writeGStar (graph:dict):
     #nx.draw(graphStar, with_labels=True)
     
     # Define Coverage
-    coverage1 = []
-    for edgeValue in graphStar.edges.values():
-        coverage1.append(float(edgeValue['capacity']))
+    coverage1 = {}
+    for edgeKey,edgeValue in graphStar.edges.items():
+        coverage1[edgeKey]= float(edgeValue['capacity'])
 
     numberEdges = len(graphStar.edges)
     edges = list(graphStar.edges.keys())
 
     # Introduce Model for Minimizing the flow 
     flowModel = gp.Model()
-
+    flowModel.Params.logtoConsol
     # Add decision Variables
-    flow = flowModel.addVars(numberEdges, vtype = GRB.CONTINUOUS)
+    flow = flowModel.addVars(edges, vtype = GRB.INTEGER)
     
     # Add SlackVariables
-    y = flowModel.addVars(numberEdges, lb=-GRB.INFINITY, vtype = GRB.CONTINUOUS)
-    z = flowModel.addVars(numberEdges, vtype = GRB.CONTINUOUS)
+    y = flowModel.addVars(edges, lb=-GRB.INFINITY, vtype = GRB.INTEGER)
+    z = flowModel.addVars(edges, vtype = GRB.INTEGER, lb =0)
     
-    for j in range(len(flow)):
+    # Add Constraints
+    for j in edges:
         flowModel.addConstr(y[j]==flow[j] - coverage1[j])
         flowModel.addConstr(z[j]>= y[j])
         flowModel.addConstr(z[j]>= -y[j])
     
-    flowModel.setObjective(gp.quicksum(z[j] for j in range(len(flow))))
+    # Add flow Constraints
+    # Add Kirchhoff constraint
+    for node in graphStar.nodes.keys():
+        if str(node) != 's*' and node!= 't*':
+            flowModel.addConstr(gp.quicksum(flow[edgeOut] for edgeOut in graphStar.out_edges(node)) == gp.quicksum(flow[edgeIn] for edgeIn in graphStar.in_edges(node)))
+    # Add Capacity Constraint
+    flowModel.addConstrs(flow[j]<=coverage1[j] for j in edges)
+    # Add non-negativity constraint
+    flowModel.addConstrs(flow[j]>=0 for j in edges)
+    # Add symmetry constraint
+    for node in graphStar.nodes.keys():
+        if str(node) != 's*' and node!= 't*':
+            for edgeOut in graphStar.out_edges(node):
+                for edgeIn in graphStar.in_edges(node):
+                    if edgeOut[1]==edgeIn[0]:
+                        flowModel.addConstr(flow[edgeOut]==flow[edgeIn])
+    #flowModel.addConstrs(flow[j]== for j in edges)
+    # Set objective
+    flowModel.setObjective(gp.quicksum(z[j] for j in edges), GRB.MINIMIZE)
+    # Optimize Model
     flowModel.optimize()
 
     # Add Constraints
@@ -73,8 +93,10 @@ def writeGStar (graph:dict):
         print(var.varName)
         print(var.X)
     print(flow)
-#     flowModel.optimize()
     return(graphStar)
+
+    # Correct on cov(u,v) on original graph
+
 
 def costFunction (coverage:int):     
     cost = 0
