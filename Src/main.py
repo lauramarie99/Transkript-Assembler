@@ -116,20 +116,26 @@ else:
             # OPTIMIZATION
             if("-opt" in sys.argv):
                 if("-norm0" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L0", "L0", len(transcripts)/2)
-                if ("-norm0" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L0", "L1", 200)
-                if ("-norm1" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L1", "L0", len(transcripts)/2)
-                if ("-norm1" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L1", "L1", 200)
+                    var_dict = optimize.model(Graph, transcripts, "L0", "L0", 1)
+                elif ("-norm0" in sys.argv and "-constr1" in sys.argv):
+                    var_dict = optimize.model(Graph, transcripts, "L0", "L1", 1)
+                elif ("-norm1" in sys.argv and "-constr0" in sys.argv):
+                    var_dict = optimize.model(Graph, transcripts, "L1", "L0", 1)
+                elif ("-norm1" in sys.argv and "-constr1" in sys.argv):
+                    var_dict = optimize.model(Graph, transcripts, "L1", "L1", 1)
                     checkbox = 2
-                if ("-norm2" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L2", "L0", len(transcripts)/2)
-                if ("-norm2" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L2", "L1", 200)
+                elif ("-norm2" in sys.argv and "-constr0" in sys.argv):
+                    var_dict = optimize.model(Graph, transcripts, "L2", "L0", 1)
+                elif ("-norm2" in sys.argv and "-constr1" in sys.argv):
+                    var_dict = optimize.model(Graph, transcripts, "L2", "L1", 1)
+                elif ("-norm0" in sys.argv):
+                    var_dict = optimize.model(Graph, transcripts, "L0", None, 0)
+                elif ("-norm1" in sys.argv):
+                    var_dict = optimize.model(Graph, transcripts, "L1", None, 0)
+                elif ("-norm2" in sys.argv):
+                    var_dict = optimize.model(Graph, transcripts, "L2", None, 0)
                 else:
-                    var_dict = optimize.model(Graph, transcripts, "L1", "L0", len(transcripts)/2)
+                    var_dict = optimize.model(Graph, transcripts, "L1", None, 0) # if no norm is specified, norm1 is used
 
 
                 #create list that contains transcripts from all genes and their expression levels. List contains dictionary where key is the gene number (position in file) and values are transcripts and expression levels
