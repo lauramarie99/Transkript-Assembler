@@ -3,15 +3,16 @@ import gurobipy as gp
 from gurobipy import GRB
 
 
-def model(G_clean, transcripts):
-    #extract edge type and counts from graph file into dictionary
+def model(G_clean, transcripts:list, norm, sparsity_constr, factor:int):
+    # Extract edge type and counts from graph file into dictionary
     edges_dict = {}
     for edgeKey, edgeValue in G_clean.edges.items():
         count = edgeValue["counts"]["c"]
         if edgeValue["type"] == "SpliceJunction" or edgeValue["type"] == "Exon":
             edges_dict[edgeKey] = count
-    #print(edges_dict)
+    # Print(edges_dict)
     edges = list(edges_dict.keys())
+
     # Create Adjazenzmatrix (path,edge): 0/1
     adj_matrix = {}
     for i in range(0, len(transcripts)):
@@ -25,35 +26,83 @@ def model(G_clean, transcripts):
             if (i, edge) not in adj_matrix.keys():
                 adj_matrix[i, edge] = 0
 
-    #create model for gurobi
+    # Create model for gurobi
     model = gp.Model("Transcript Expression")
+    model.Params.LogToConsole = 0
+
     # Add variables
-    no_trans = range(len(transcripts))
-    vars = model.addVars(no_trans, vtype=GRB.CONTINUOUS, name="expression_levels", lb=0.0)
-    #"X" values
-    helper1 = model.addVars(edges, lb=-GRB.INFINITY, vtype=GRB.CONTINUOUS, name="X")
-    #"Y" values (cannot be negative)
-    helper2 = model.addVars(edges, vtype=GRB.CONTINUOUS, name="Y")
+    no_trans = len(transcripts)
+    vars = model.addVars(no_trans, vtype=GRB.CONTINUOUS, name="expression_levels", lb=0.0) # Expression levels of transcripts
+    helper1 = model.addVars(edges, lb=-GRB.INFINITY, vtype=GRB.CONTINUOUS, name="X") # "X" values
 
+    # Optimization
+    if sparsity_constr == "L0":
+        sparsity_norm0 = model.addVar(name="Sparsity_Constraint_L0") # Sparsity constraint L0 norm
+        model.addGenConstrNorm(sparsity_norm0, vars, 0) # Hinzufügen dieser Zeile verändert sofort die Werte der Variablen var1, warum?
+        # model.addConstr(sparsity_norm0 <= factor)
+    # elif sparsity_constr == "L1":
+        # model.addConstr(vars.sum() <= factor) # Sparsity constraint L1 norm
 
-    # Define optimization problem
-    for j in edges:
-        model.addConstr(
-            helper1[j] == edges_dict[j] - gp.quicksum(adj_matrix[i, j] * vars[i] for i in range(len(transcripts))))
-        # model.addConstr(helper2[j] == gp.abs_(helper1[j]))
-        #solution from gatter
-        model.addConstr(helper2[j] >= helper1[j])
-        model.addConstr(helper2[j] >= -helper1[j])
+    if norm == "L1":
+        # Variable
+        norm1 = model.addVars(edges, vtype=GRB.CONTINUOUS, name="L1_norm") # L1 norm (Betrag)
+        # Objective function
+        for j in edges:
+            model.addConstr(helper1[j] == (edges_dict[j] - (gp.quicksum(adj_matrix[i,j] * vars[i] for i in range(len(transcripts))))))
+            model.addConstr(norm1[j] >= helper1[j])
+            model.addConstr(norm1[j] >= -helper1[j])
+        # Sparsity constraints
+        if sparsity_constr == "L0":
+            model.setObjective((gp.quicksum(norm1[j] for j in edges) + (factor*sparsity_norm0)), GRB.MINIMIZE)
+        elif sparsity_constr == "L1":
+            model.setObjective((gp.quicksum(norm1[j] for j in edges) + (factor*vars.sum())), GRB.MINIMIZE)
+        else:
+            model.setObjective(gp.quicksum(norm1[j] for j in edges), GRB.MINIMIZE)
 
-    model.setObjective(gp.quicksum(helper2[j] for j in edges), GRB.MINIMIZE)
+    elif norm == "L0":
+        # Variable
+        norm0 = model.addVar(name="L0_norm") # L0 norm
+        # Objective function
+        for j in edges:
+            model.addConstr(helper1[j] == (edges_dict[j] - (gp.quicksum(adj_matrix[i,j] * vars[i] for i in range(len(transcripts))))))
+        model.addGenConstrNorm(norm0, helper1, 0)
+        # Sparsity constraints
+        if sparsity_constr == "L0":
+            model.setObjective(norm0 + (factor*sparsity_norm0), GRB.MINIMIZE)
+        elif sparsity_constr == "L1":
+            model.setObjective(norm0 + (factor*vars.sum()), GRB.MINIMIZE)
+        else:
+            model.setObjective(norm0, GRB.MINIMIZE)
+
+    elif norm == "L2":
+        # Variables
+        norm2_1 = model.addVars(edges, vtype=GRB.CONTINUOUS, name="L2_norm_1") # Absolute value of helper1
+        norm2_2 = model.addVars(edges, vtype=GRB.CONTINUOUS, name="L2_norm_2") # Square of norm2_1
+        norm2_3 = model.addVar(name="L2_norm_3") # Sum of norm2_2
+        norm2_4 = model.addVar(name="L2_norm_4") # Square root of norm2_3 = L2 norm
+        # Objective function
+        for j in edges:
+            model.addConstr(helper1[j] == (edges_dict[j] - (gp.quicksum(adj_matrix[i,j] * vars[i] for i in range(len(transcripts))))))
+            model.addConstr(norm2_1[j] >= helper1[j])
+            model.addConstr(norm2_1[j] >= -helper1[j])
+            model.addGenConstrPow(norm2_1[j], norm2_2[j], 2)
+        model.addConstr(norm2_3 == gp.quicksum(norm2_2[j] for j in edges))
+        model.addGenConstrPow(norm2_3, norm2_4, 0.5)
+        # Sparsity constraints
+        if sparsity_constr == "L0":
+            model.setObjective(norm2_4 + (factor*sparsity_norm0), GRB.MINIMIZE)
+        elif sparsity_constr == "L1":
+            model.setObjective(norm2_4 + (factor*vars.sum()), GRB.MINIMIZE)
+        else:
+            model.setObjective(norm2_4, GRB.MINIMIZE)
 
     model.optimize()
 
-    # Print results
+    # Return results
     var_dict = {}
     for var in model.getVars():
-        print(var.varName)
-        print(var.X)
+        #print(var.varName)
+        #print(var.X)
         if "expression_levels" in var.varName:
             var_dict[var.varName] = var.X
     return var_dict
