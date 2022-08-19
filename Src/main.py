@@ -3,6 +3,7 @@ import sys
 import parse_graph_new
 import path_enumeration
 import pairedbin_enumeration
+import flowProblem
 import networkx as nx
 import time
 import json
@@ -36,6 +37,7 @@ if(sys.argv[1] =="-help"):
     print("--> example: main.py Test.graph -paired -opt -norm1 -constr0")
     print("--> results are stored in same folder as save.jsn")
     print("-fullgraph: combine with other arguments to use the full graph (cleaned graph is used otherwise)")
+    print("-flow: Use flow-based optimization for establishing a set of paths")
 
 #read in file to estimate calculation time
 else:
@@ -136,7 +138,7 @@ else:
                     var_dict = optimize.model(Graph, transcripts, "L2", None, 0)
                 else:
                     var_dict = optimize.model(Graph, transcripts, "L1", None, 0) # if no norm is specified, norm1 is used
-
+            
 
                 #create list that contains transcripts from all genes and their expression levels. List contains dictionary where key is the gene number (position in file) and values are transcripts and expression levels
                 data = [(transcripts_edge[i], var_dict[f"expression_levels[{i}]"]) for i in range(len(transcripts_edge))]
@@ -154,7 +156,13 @@ else:
                 #save transcripts and their expression levels
                 with open("save.json", 'w') as file:
                     json.dump(data_dict, file)
+                
 
+            elif "-flowOptimization" in sys.argv:
+                
+                optimizedTranscripts = []
+                g_Star, flow = flowProblem.writeGStar(Graph, 1)
+                optimizedTranscripts = flowProblem.flowDecompositionWithTranscriptlist(Graph, transcripts, 'maximumFlow', flow)
                 # ADD TRANSCRIPTS TO GTF FILE
                 """
                 elif(sys.argv[2] == "-GTF"):

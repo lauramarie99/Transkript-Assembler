@@ -4,6 +4,7 @@ from gurobipy import GRB
 import networkx as nx
 from copy import deepcopy
 import math
+import sys, os
 
 def writeGStar (graph:dict, cost_index):
     graphStar = nx.DiGraph() # Define new Graph
@@ -63,21 +64,45 @@ def writeGStar (graph:dict, cost_index):
     # Correct on cov(u,v) on original graph
     for edgeKey, edgeValue in graph.edges.items():
         edgeValue['counts']['c'] = edgeValue['counts']['c'] + flowDict[edgeKey[0]][edgeKey[1]] - flowDict[edgeKey[1]][edgeKey[0]]
-    
+    flow = 0 
+    for edge in graph.out_edges('0', data=True):
+        flow = flow + edge[2]['counts']['c']
     # Flow Decomposition
 
     # Longest Path
     # for path in transcripts:
     #     print(transcripts)
 
-    return(graphStar)    
+    return(graphStar,flow)    
 
 def costFunction (coverage:int, cost_index, length):     
     if cost_index == 0:
         return 1
     elif cost_index == 1:
-        print(coverage)
-        print(1/coverage)
         return 1/coverage
     elif cost_index == 2: 
         return 1/math.sqrt(coverage)    
+
+def flowDecompositionWithTranscriptlist(graph:dict, transcripts:list, decomposition_option:str, flow):
+    transcriptsCopy = deepcopy(transcripts)
+    optimizedTranscripts = []
+    while (flow>0):
+        if decomposition_option == 'longestPath':
+            longestPath = transcriptsCopy[transcriptsCopy.index(max(transcriptsCopy, key=len))]
+            flow = flow - min(graph.edges[longestPath[i], longestPath[i+1]]['counts']['c'] for i in range(len(longestPath)-1)) # Subtract minFlow of longestPath from remaining Flow
+            optimizedTranscripts.append(longestPath) # Add path to optimized TranscriptList
+            transcriptsCopy.remove(longestPath) # Remove path from transcriptsCopy
+        elif decomposition_option == 'maximumFlow':
+            maxFlow = 0
+            for transcript in transcriptsCopy:
+                minFlow = min(graph.edges[transcript[i], transcript[i+1]]['counts']['c'] for i in range(len(transcript)-1))
+                if minFlow > maxFlow:
+                    maxFlow = minFlow
+                    flow = flow - maxFlow
+                    optimizedTranscripts.append(transcript)
+                    transcriptsCopy.remove(transcript)
+        else:
+            print('Error, please specify decomposition option.')
+            os.exit()
+    return optimizedTranscripts
+
