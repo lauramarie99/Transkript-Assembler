@@ -40,12 +40,12 @@ def writeGStar (graph:dict, costIndex):
                 for edge in graph.in_edges(startNode, data=True):
                     edgeValue['counts']['c'] = edge[2]['counts']['c']
         coverage = edgeValue['counts']['c']
-        graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = float('inf'), weight=costFunction(float('inf'), costIndex, 0)) # Add Forward edge with capacity infinite and weight = costFunction
+        graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = float('inf'), weight=costFunction(1, float('inf'), costIndex, 0)) # Add Forward edge with capacity infinite and weight = costFunction
         if costIndex <= 2:
-            graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = coverage, weight=costFunction(coverage, costIndex, 0)) # Add backward edges with capacity (counts) of original forward edges and costFunction
+            graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = coverage, weight=costFunction(1, coverage, costIndex, 0)) # Add backward edges with capacity (counts) of original forward edges and costFunction
         else: 
             for i in range(1,coverage+1):
-                graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = 1, weight=costFunction(i, costIndex, 0)) # Add backward edges with capacity (counts) of original forward edges and costFunction
+                graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = 1, weight=costFunction(i, 1, costIndex, 0)) # Add backward edges with capacity (counts) of original forward edges and costFunction
     print(len(graphStar.edges()))
 
     # Add additional edges from s* and to t*
@@ -67,7 +67,7 @@ def writeGStar (graph:dict, costIndex):
         flow = flow + edge[2]['counts']['c']
     return(graphStar, graph, flow)    
 
-def costFunction (coverage:int, costIndex, length):     
+def costFunction (i, coverage:int, costIndex, length):     
     if costIndex == 0:
         return 1
     elif costIndex == 1:
@@ -75,7 +75,7 @@ def costFunction (coverage:int, costIndex, length):
     elif costIndex == 2: 
         return 1/math.sqrt(coverage)
     elif costIndex == 3:
-        return 1/coverage
+        return i/coverage
     elif costIndex == 4:
         return (abs(length)-1)/coverage 
     else:
