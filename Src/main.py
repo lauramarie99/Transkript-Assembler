@@ -175,11 +175,13 @@ else:
             elif "-flowOptimization" in sys.argv:
                 
                 optimizedTranscripts = []
+                costFuntionIndex = 1
                 if "-costFunction" in sys.argv:
                     for i in range(len(sys.argv)):
                         if sys.argv[i] == "-costFunction":
                             costFunctionIndex = int(sys.argv[i+1])
                             break
+                        
                 print('CostFunctionIndex = ' + str(costFunctionIndex))        
                 g_Star, newGraph, flow = flowProblem.writeGStar(Graph, costFunctionIndex)
 
