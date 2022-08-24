@@ -37,7 +37,21 @@ if(sys.argv[1] =="-help"):
     print("--> example: main.py Test.graph -paired -opt -norm1 -constr0")
     print("--> results are stored in same folder as save.jsn")
     print("-fullgraph: combine with other arguments to use the full graph (cleaned graph is used otherwise)")
-    print("-flow: Use flow-based optimization for establishing a set of paths")
+    print("-flowOptimization: Use flow-based optimization for establishing a set of paths")
+    print("--> specify how flow decomposition is being attained:")
+    print("-- TLLP: (=TranscriptListLongestPath) in every step the total flow will be reduced by the flow of the longest path of the previously generated set of transcripts")
+    print("-- TLMP: (=TranscriptListMaximumFlow) in every step the total flow will be reduced by the flow of the path with the maximumFlow of the previously generated set of transcripts")
+    print("--> Caution: For the last two options we recommend using -full, because combining -multi, -paired, -paired2 or -opt with flow-based optimization will probably not accomplish in an optimal solution.")
+    print("-- DPLP: (=DynamicProgrammingLongestPath) in every step the total flow will be reduced by the flow of the longest path obtained via dynamic programming (prior establishing the set of paths is not needed for this option)")
+    print("-- DPMF: (=DynamicProgrammingMaximumFlow): in every step the total flow will be reduced by the flow of the path with maximumFlow obtained via dynamic programming (prior establishing the set of paths is not needed for this option)")
+    print("--> Default Value: is TranscriptListLongestPath")
+    print("-costFunctionX: Specify the costFunction used for flow-based optimization with X")
+    print("--> 1: f(x) = x (default)" )
+    print("--> 2: f(x) = x/cov(u,v)")
+    print("--> 3: f(x) = x/sqrt(cov(u,v))")
+    print("--> 4: f(x) = x^2/cov(u,v)")
+    print("--> 5: f(x) = x^2*|l(u,v)-1|/cov(u,v")
+    print("--> Default value is 1")
 
 #read in file to estimate calculation time
 else:
@@ -161,8 +175,24 @@ else:
             elif "-flowOptimization" in sys.argv:
                 
                 optimizedTranscripts = []
-                g_Star, flow = flowProblem.writeGStar(Graph, 1)
-                optimizedTranscripts = flowProblem.flowDecompositionWithTranscriptlist(Graph, transcripts, 'maximumFlow', flow)
+                if "-costFunction" in sys.argv:
+                    for i in range(len(sys.argv)):
+                        if sys.argv[i] == "-costFunction":
+                            costFunctionIndex = int(sys.argv[i+1])
+                            break
+                print('CostFunctionIndex = ' + str(costFunctionIndex))        
+                g_Star, newGraph, flow = flowProblem.writeGStar(Graph, costFunctionIndex)
+
+                if "-TLLP" in sys.argv:
+                    optimizedTranscripts = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'longestPath', flow)
+                elif "-TLMF" in sys.argv:
+                    optimizedTranscripts = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'maximumFlow', flow)
+                elif "-DPLP" in sys.argv:
+                    optimizedTranscripts = flowProblem.flowDecompositionDP(newGraph, 'longestPath', flow)
+                elif "-DPMF" in sys.argv:
+                    optimizedTranscripts = flowProblem.flowDecompositionDP(newGraph, 'maximumFlow', flow)
+                else: 
+                    optimizedTranscripts = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'longestPath', flow)
                 # ADD TRANSCRIPTS TO GTF FILE
                 """
                 elif(sys.argv[2] == "-GTF"):

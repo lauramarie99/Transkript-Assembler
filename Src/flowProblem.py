@@ -78,8 +78,8 @@ def costFunction (coverage:int, cost_index, length):
         return 1/math.sqrt(coverage)    
 
 def flowDecompositionWithTranscriptlist(graph:dict, transcripts:list, decomposition_option:str, flow):
-    #transcriptsCopy = deepcopy(transcripts)
-    transcriptsCopy = list(nx.all_simple_paths(graph, '0', '1'))
+    transcriptsCopy = deepcopy(transcripts)
+    #transcriptsCopy = list(nx.all_simple_paths(graph, '0', '1'))
     optimizedTranscripts = []
     if decomposition_option == 'longestPath':
         while (flow>0 and len(transcriptsCopy)>0):
@@ -91,7 +91,7 @@ def flowDecompositionWithTranscriptlist(graph:dict, transcripts:list, decomposit
                 flow = flow - minFlow
                 optimizedTranscripts.append(longestPath) # Add path to optimized TranscriptList
             transcriptsCopy.remove(longestPath) # Remove path from transcriptsCopy
-        print(flow)
+        print('flowDecompositionWithTranscriptlist and longestPath ' + str(flow))
     elif decomposition_option == 'maximumFlow':
         while (flow>0 and len(transcriptsCopy)>0):
             maxFlow = 0
@@ -111,7 +111,7 @@ def flowDecompositionWithTranscriptlist(graph:dict, transcripts:list, decomposit
                 flow = flow - maxFlow
                 optimizedTranscripts.append(maxFlowPath)
             transcriptsCopy.remove(maxFlowPath)
-        print(flow)
+        print('flowDecompositionWithTranscriptlist and maxFlow ' + str(flow))
     else:
         print('Error, please specify decomposition option.')
         os.exit()
@@ -158,7 +158,7 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow):
                 if graph.edges[transcript[i], transcript[i+1]]['counts']['c'] == 0:
                     graph.remove_edge(transcript[i], transcript[i+1])
             flow = flow - minFlow
-
+        print('flowDecompositionWithDP and longestPath ' + str(flow))
 
     elif decomposition_option == 'maximumFlow':
         while(flow>0):        
@@ -180,14 +180,12 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow):
             transcript = []
             transcript.append('1')
             maxFlow = max(DP[int(x)][1] for x in graph.predecessors('1'))
-            print(maxFlow)
             maxIndex = np.argmax(DP, axis=0)[1]
             transcript.append(str(maxIndex))
             while(maxIndex!=0):
                 maxIndex = np.argmax(DP, axis=0)[maxIndex]
                 transcript.append(str(maxIndex))
             transcript.reverse()
-            print(transcript)
             optimizedTranscripts.append(transcript)
             
             # Eliminate edges with minimal flow
@@ -196,7 +194,7 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow):
                 if graph.edges[transcript[i], transcript[i+1]]['counts']['c'] == 0:
                     graph.remove_edge(transcript[i], transcript[i+1])
             flow = flow - maxFlow
-        print(flow)
+        print('flowDecompositionWithDP and residualFlow = ' + str(flow))
 
     # Second Option with One matrix 
         # n = max(int(node) for node in list(graph.nodes()))+1
