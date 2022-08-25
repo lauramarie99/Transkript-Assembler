@@ -8,9 +8,14 @@ import sys, os
 import numpy as np
 import scipy as sp
 
-def writeGStar (graph:dict, costIndex):
-    graphStar = nx.DiGraph() # Define new Graph
+def writeGStar(graph:dict, costIndex):
+    if costIndex<=2:
+        return writeGStarLinear(graph, costIndex)
+    else:
+        return writeGStarQuadratic(graph, costIndex)
 
+def writeGStarLinear(graph:dict, costIndex):
+    graphStar = nx.DiGraph() # Define new Graph
     graphStar.add_nodes_from(graph.nodes.keys()) # Add all nodes from the original Graph
     
     #s0Label = str(max(int(nodeNumber) for nodeNumber in graphStar.nodes.keys())+1) # Set s0 label
@@ -29,24 +34,97 @@ def writeGStar (graph:dict, costIndex):
 
     # Add Edges from original graph with infinite capacity and cost function
     for edgeKey, edgeValue in graph.edges.items():
-        # Add Coverage to Helper Edges
+        #Add Coverage to Helper Edges
         if edgeValue['type'] == 'Helper':
             if edgeKey[0] =='0':
                 endNode = edgeKey[1]
+                if (len(graph.out_edges(endNode, data=True)))>1:
+                    print('More than one following edge')
                 for edge in graph.out_edges(endNode, data=True):
                     edgeValue['counts']['c'] = edge[2]['counts']['c']
             elif edgeKey[1] =='1':
                 startNode = edgeKey[0]
+                if (len(graph.in_edges(startNode, data=True)))>1:
+                    print('More than one following edge')
+                for edge in graph.in_edges(startNode, data=True):
+                    edgeValue['counts']['c'] = edge[2]['counts']['c']
+        coverage = edgeValue['counts']['c']
+        graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = float('inf'), weight=costFunction(1,float('inf'), costIndex, 0)) # Add Forward edge with capacity infinite and weight = costFunction
+        graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = coverage, weight=100*costFunction(1, coverage, costIndex, 0)) # Add backward edges with capacity (counts) of original forward edges and costFunction
+        
+    # Add additional edges from s* and to t*
+    for node in graph.nodes.keys():
+        d = sum(int(edge[2]['counts']['c']) for edge in graph.out_edges(node, data=True)) - sum(int(edge[2]['counts']['c']) for edge in graph.in_edges(node, data=True))
+        if d>0:
+            graphStar.add_edge(node, 't*', weight = 0,capacity = d)
+        elif d<0:
+            graphStar.add_edge('s*', node, weight = 0, capacity = -d)
+    flowDict = nx.max_flow_min_cost(graphStar, 's*', 't*', 'capacity', 'weight')
+    
+    # Define Coverage
+    coverage1 = {}
+    for edgeKey,edgeValue in graphStar.edges.items():
+        coverage1[edgeKey]= float(edgeValue['capacity'])
+
+    # Correct on cov(u,v) on original graph
+    for edgeKey, edgeValue in graph.edges.items():
+        edgeValue['counts']['c'] = edgeValue['counts']['c'] + flowDict[edgeKey[0]][edgeKey[1]] - flowDict[edgeKey[1]][edgeKey[0]]
+    flow = 0 
+    for edge in graph.out_edges('0', data=True):
+        flow = flow + edge[2]['counts']['c']
+    return(graphStar, graph, flow)    
+
+
+def writeGStarQuadratic(graph:dict, costIndex:int):
+    graphStar = nx.DiGraph() # Define new Graph
+    graphStar.add_nodes_from(graph.nodes.keys()) # Add all nodes from the original Graph
+    
+    #s0Label = str(max(int(nodeNumber) for nodeNumber in graphStar.nodes.keys())+1) # Set s0 label
+    graphStar.add_node('s0') # Add s0
+    graphStar.add_edge('s0', '0', weight = 0, capacity=float('inf')) # add s0 -> s
+    
+    #t0Label = str(max(int(nodeNumber) for nodeNumber in graphStar.nodes.keys())+1) # set t0 label
+    graphStar.add_node('t0') # Add t0
+    graphStar.add_edge('1', 't0', weight = 0, capacity=float('inf')) # add t -> t0
+    graphStar.add_edge('t0', 's0', weight = 0, capacity=float('inf')) # add t0 -> s0    
+    #sStarLabel = str(max(int(nodeNumber) for nodeNumber in graphStar.nodes.keys())+1) # set sStarLabel
+    graphStar.add_node('s*') # add s*
+    
+    #tStarLabel = str(max(int(nodeNumber) for nodeNumber in graphStar.nodes.keys())+1) # Set tStarLabek
+    graphStar.add_node('t*') # add t*
+
+    # Add Edges from original graph with infinite capacity and cost function
+    globalEdgeDict = {}
+    for edgeKey, edgeValue in graph.edges.items():
+        #Add Coverage to Helper Edges
+        if edgeValue['type'] == 'Helper':
+            if edgeKey[0] =='0':
+                endNode = edgeKey[1]
+                if (len(graph.out_edges(endNode, data=True)))>1:
+                    print('More than one following edge')
+                for edge in graph.out_edges(endNode, data=True):
+                    edgeValue['counts']['c'] = edge[2]['counts']['c']
+            elif edgeKey[1] =='1':
+                startNode = edgeKey[0]
+                if (len(graph.in_edges(startNode, data=True)))>1:
+                    print('More than one following edge')
                 for edge in graph.in_edges(startNode, data=True):
                     edgeValue['counts']['c'] = edge[2]['counts']['c']
         coverage = edgeValue['counts']['c']
         graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = float('inf'), weight=costFunction(1, float('inf'), costIndex, 0)) # Add Forward edge with capacity infinite and weight = costFunction
-        if costIndex <= 2:
-            graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = coverage, weight=costFunction(1, coverage, costIndex, 0)) # Add backward edges with capacity (counts) of original forward edges and costFunction
-        else: 
-            for i in range(1,coverage+1):
-                graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = 1, weight=costFunction(i, 1, costIndex, 0)) # Add backward edges with capacity (counts) of original forward edges and costFunction
-    print(len(graphStar.edges()))
+        if edgeKey[0] in globalEdgeDict.keys():
+            localEdgeDict = globalEdgeDict[edgeKey[0]]
+        else:
+            localEdgeDict = {}
+        edgeList = []
+        for i in range(coverage+1):
+            nodeNumber = len(graphStar.nodes())+1
+            graphStar.add_node(str(nodeNumber))
+            edgeList.append(str(nodeNumber))
+            graphStar.add_edge(edgeKey[1], str(nodeNumber), capacity = 1, weight=costFunction(i, coverage, costIndex, 0)) # Add backward edges with capacity (counts) of original forward edges and costFunction
+            graphStar.add_edge(nodeNumber, edgeKey[0], capacity = 1, weight=0) # Add backward edges with capacity (counts) of original forward edges and costFunction
+        localEdgeDict[edgeKey[1]] = edgeList
+        globalEdgeDict[edgeKey[0]] = localEdgeDict
 
     # Add additional edges from s* and to t*
     for node in graph.nodes.keys():
@@ -55,11 +133,30 @@ def writeGStar (graph:dict, costIndex):
             graphStar.add_edge(node, 't*', weight = 0,capacity = d)
         elif d<0:
             graphStar.add_edge('s*', node, weight = 0, capacity = -d)
-
-    # Calculate maximum Flow at minimal Costs 
+    print('Trying to calculate maximum Flow at minimum costs')
     flowDict = nx.max_flow_min_cost(graphStar, 's*', 't*', 'capacity', 'weight')
+    print('Finished calculating maximum Flow at minimum costs')
+    # Define Coverage
+    coverage1 = {}
+    for edgeKey,edgeValue in graphStar.edges.items():
+        coverage1[edgeKey]= float(edgeValue['capacity'])
 
     # Correct on cov(u,v) on original graph
+# Correct on cov(u,v) on original graph
+    for edgeKey, edgeValue in graph.edges.items():
+        if edgeKey[0] in globalEdgeDict.keys():
+            edgeFlow = 0
+            edgeList = globalEdgeDict[edgeKey[0]][edgeKey[1]]
+            for i in range(len(edgeList)):
+                edgeFlow = edgeFlow + flowDict[edgeKey[1]][edgeList[i]]
+            edgeValue['counts']['c'] = edgeValue['counts']['c'] + flowDict[edgeKey[0]][edgeKey[1]] - edgeFlow
+        else:
+            edgeValue['counts']['c'] = edgeValue['counts']['c'] + flowDict[edgeKey[0]][edgeKey[1]] - flowDict[edgeKey[1]][edgeKey[0]]
+    flow = 0 
+    for edge in graph.out_edges('0', data=True):
+        flow = flow + edge[2]['counts']['c']
+    return(graphStar, graph, flow)    
+
     for edgeKey, edgeValue in graph.edges.items():
         edgeValue['counts']['c'] = edgeValue['counts']['c'] + flowDict[edgeKey[0]][edgeKey[1]] - flowDict[edgeKey[1]][edgeKey[0]]
     flow = 0 
@@ -75,12 +172,9 @@ def costFunction (i, coverage:int, costIndex, length):
     elif costIndex == 2: 
         return 1/math.sqrt(coverage)
     elif costIndex == 3:
-        return i/coverage
+        return i/coverage 
     elif costIndex == 4:
-        return (abs(length)-1)/coverage 
-    else:
-        print('Please enter valid CostFunctionIndex, for specifications see main.py --help. The programm will now be terminated.')
-        sys.exit()
+        return i*(abs(length)-1)/coverage
 
 def flowDecompositionWithTranscriptlist(graph:dict, transcripts:list, decomposition_option:str, flow):
     transcriptsCopy = deepcopy(transcripts)
@@ -163,7 +257,7 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow):
                 if graph.edges[transcript[i], transcript[i+1]]['counts']['c'] == 0:
                     graph.remove_edge(transcript[i], transcript[i+1])
             flow = flow - minFlow
-        print('flowDecompositionWithDP and longestPath ' + str(flow))
+        print('flowDecompositionDP with longestPath and residualFlow = ' + str(flow))
 
     elif decomposition_option == 'maximumFlow':
         while(flow>0):        
@@ -191,6 +285,8 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow):
                 maxIndex = np.argmax(DP, axis=0)[maxIndex]
                 transcript.append(str(maxIndex))
             transcript.reverse()
+            print(DP)
+            print(transcript)
             optimizedTranscripts.append(transcript)
             
             # Eliminate edges with minimal flow
@@ -199,7 +295,7 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow):
                 if graph.edges[transcript[i], transcript[i+1]]['counts']['c'] == 0:
                     graph.remove_edge(transcript[i], transcript[i+1])
             flow = flow - maxFlow
-        print('flowDecompositionWithDP and residualFlow = ' + str(flow))
+        print('flowDecompositionDP with maximumFlow and residualFlow = ' + str(flow))
 
     # Second Option with One matrix 
         # n = max(int(node) for node in list(graph.nodes()))+1
