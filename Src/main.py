@@ -46,11 +46,10 @@ if(sys.argv[1] =="-help"):
     print("-- DPMF: (=DynamicProgrammingMaximumFlow): in every step the total flow will be reduced by the flow of the path with maximumFlow obtained via dynamic programming (prior establishing the set of paths is not needed for this option)")
     print("--> Default Value: is TranscriptListLongestPath")
     print("-costFunctionX: Specify the costFunction used for flow-based optimization with X")
-    print("--> 1: f(x) = x (default)" )
-    print("--> 2: f(x) = x/cov(u,v)")
-    print("--> 3: f(x) = x/sqrt(cov(u,v))")
-    print("--> 4: f(x) = x^2/cov(u,v)")
-    print("--> 5: f(x) = x^2*|l(u,v)-1|/cov(u,v")
+    print("--> 0: f(x) = x (default)" )
+    print("--> 1: f(x) = x/cov(u,v)")
+    print("--> 2: f(x) = x/sqrt(cov(u,v))")
+    print("--> 3: f(x) = x^2*|l(u,v)|-1/cov(u,v")
     print("--> Default value is 1")
 
 #read in file to estimate calculation time
@@ -64,6 +63,7 @@ else:
     with open(sys.argv[1]) as f:
         fileEndReached = False
         f.readline()  # skip ---- seperator line
+        geneCounter = 0
         while not fileEndReached:
 
             # READ META AND BIN DATA FROM FILE
@@ -182,20 +182,35 @@ else:
                             costFunctionIndex = int(sys.argv[i+1])
                             break
                         
-                print('CostFunctionIndex = ' + str(costFunctionIndex))        
-                g_Star, newGraph, flow = flowProblem.writeGStar(Graph, costFunctionIndex)
-
-                if "-TLLP" in sys.argv:
-                    optimizedTranscripts = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'longestPath', flow)
-                elif "-TLMF" in sys.argv:
-                    optimizedTranscripts = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'maximumFlow', flow)
-                elif "-DPLP" in sys.argv:
-                    optimizedTranscripts = flowProblem.flowDecompositionDP(newGraph, 'longestPath', flow)
-                elif "-DPMF" in sys.argv:
-                    optimizedTranscripts = flowProblem.flowDecompositionDP(newGraph, 'maximumFlow', flow)
-                else: 
-                    optimizedTranscripts = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'longestPath', flow)
-                # ADD TRANSCRIPTS TO GTF FILE
+                print('CostFunctionIndex = ' + str(costFunctionIndex))
+                tuningFactor = 1 # Define TuningFactor for costFunction to prevent residualFlow
+                skipOptimization = False
+                
+                print(geneCounter)
+                geneCounter = geneCounter +1
+              
+                # Catch infeasible models or models that are unbounded below
+                try:
+                    g_Star, newGraph, flow = flowProblem.writeGStar(Graph, costFunctionIndex, tuningFactor)
+                    if g_Star == 0:
+                        skipOptimization = True    
+                except nx.NetworkXUnfeasible or nx.NetworkXUnbounded:
+                    skipOptimization = True
+                    print('Infeasible Model')
+                
+                # Execute specified option
+                if not skipOptimization:
+                    if "-TLLP" in sys.argv:
+                        optimizedTranscripts = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'longestPath', flow)
+                    elif "-TLMF" in sys.argv:
+                        optimizedTranscripts = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'maximumFlow', flow)
+                    elif "-DPLP" in sys.argv:
+                        optimizedTranscripts = flowProblem.flowDecompositionDP(newGraph, 'longestPath', flow)
+                    elif "-DPMF" in sys.argv:
+                        optimizedTranscripts = flowProblem.flowDecompositionDP(newGraph, 'maximumFlow', flow)
+                    else: 
+                        optimizedTranscripts = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'longestPath', flow)
+                    # ADD TRANSCRIPTS TO GTF FILE
                 """
                 elif(sys.argv[2] == "-GTF"):
                     gene_id = 1
