@@ -183,7 +183,6 @@ else:
                             break
                         
                 print('CostFunctionIndex = ' + str(costFunctionIndex))
-                tuningFactor = 1 # Define TuningFactor for costFunction to prevent residualFlow
                 skipOptimization = False
                 
                 print(geneCounter)
@@ -191,7 +190,7 @@ else:
               
                 # Catch infeasible models or models that are unbounded below
                 try:
-                    g_Star, newGraph, flow = flowProblem.writeGStar(Graph, costFunctionIndex, tuningFactor)
+                    g_Star, newGraph, flow = flowProblem.writeGStar(Graph, costFunctionIndex)
                     if g_Star == 0:
                         skipOptimization = True    
                 except nx.NetworkXUnfeasible or nx.NetworkXUnbounded:

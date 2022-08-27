@@ -8,13 +8,13 @@ import sys, os
 import numpy as np
 import scipy as sp
 
-def writeGStar(graph:dict, costIndex:int, tuningFactor:int):
+def writeGStar(graph:dict, costIndex:int):
     if costIndex<=2:
-        return writeGStarLinear(graph, costIndex, tuningFactor)
+        return writeGStarLinear(graph, costIndex)
     else:
-        return writeGStarQuadratic(graph, costIndex, tuningFactor)
+        return writeGStarQuadratic(graph, costIndex)
 
-def writeGStarLinear(graph:dict, costIndex:int, tuningFactor:int):
+def writeGStarLinear(graph:dict, costIndex:int):
     graphStar = nx.DiGraph() # Define new Graph
     graphStar.add_nodes_from(graph.nodes.keys()) # Add all nodes from the original Graph
     
@@ -84,7 +84,7 @@ def writeGStarLinear(graph:dict, costIndex:int, tuningFactor:int):
     return(graphStar, graph, flow)    
 
 
-def writeGStarQuadratic(graph:dict, costIndex:int, tuningFactor:int):
+def writeGStarQuadratic(graph:dict, costIndex:int):
     graphStar = nx.DiGraph() # Define new Graph
     graphStar.add_nodes_from(graph.nodes.keys()) # Add all nodes from the original Graph
     
