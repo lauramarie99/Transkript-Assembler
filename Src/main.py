@@ -185,7 +185,6 @@ else:
                 print('CostFunctionIndex = ' + str(costFunctionIndex))
                 skipOptimization = False
                 
-                print(geneCounter)
                 geneCounter = geneCounter +1
               
                 # Catch infeasible models or models that are unbounded below
