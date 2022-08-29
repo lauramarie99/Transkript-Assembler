@@ -88,7 +88,7 @@ def writeGStarQuadratic(graph:dict, costIndex:int):
         print('Number of additional edges is too high to calculate maximum Flow at minimum costs')
         return 0, 1, 2
     else:
-        graphStar = nx.DiGraph() # Define new Graph
+        graphStar = nx.MultiDiGraph() # Define new Graph
         graphStar.add_nodes_from(graph.nodes.keys()) # Add all nodes from the original Graph
         graphStar.add_node('s0') # Add s0
         graphStar.add_edge('s0', '0', capacity=float('inf'), weight = 0) # add s0 -> s
@@ -97,8 +97,8 @@ def writeGStarQuadratic(graph:dict, costIndex:int):
         graphStar.add_edge('t0', 's0', capacity=float('inf'),weight = 0) # add t0 -> s0    
         graphStar.add_node('s*') # add s*
         graphStar.add_node('t*') # add t*
+
         # Add Edges from original graph with infinite capacity and cost function    
-        globalEdgeDict = {}
         for edgeKey, edgeValue in graph.edges.items():
             #Add Coverage to Helper Edges
             if edgeValue['type'] == 'Helper':
@@ -117,47 +117,45 @@ def writeGStarQuadratic(graph:dict, costIndex:int):
             coverage = int(edgeValue['counts']['c'])
             length = edgeValue['length']
             type = edgeValue['type']
-            if edgeKey[0] in globalEdgeDict.keys():
-                localEdgeDict = globalEdgeDict[edgeKey[0]]
-            else:
-                localEdgeDict = {}
-            nodeList = []
-            nodeNumber = len(graphStar.nodes())+1
-            for i in range(1, coverage*2+1):
-                graphStar.add_node(str(nodeNumber))
-                nodeList.append(str(nodeNumber))
+            for i in range(1, coverage+1):
                 # Add forward edges
-                graphStar.add_edge(edgeKey[0], str(nodeNumber), capacity = 1, weight=int(costFunction(i, coverage, costIndex, length, type))) # Add Forward edge with capacity infinite and weight = costFunction
-                graphStar.add_edge(str(nodeNumber), edgeKey[1], capacity = 1, weight=0) # Add Forward edge with capacity infinite and weight = costFunction
+                graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = 1, weight=int(costFunction(i, coverage, costIndex, length, type))) # Add Forward edge with capacity infinite and weight = costFunction
                 # Add Backward Edges
-                if i<=coverage:
-                    graphStar.add_edge(edgeKey[1], str(nodeNumber), capacity = 1, weight=int(costFunction(i, coverage, costIndex, length, type))) # Add backward edges with capacity (counts) of original forward edges and costFunction
-                    graphStar.add_edge(str(nodeNumber), edgeKey[0], capacity = 1, weight=0) # Add backward edges with capacity (counts) of original forward edges and costFunction
-                else:
-                    graphStar.add_edge(edgeKey[1], str(nodeNumber), capacity = 0, weight=int(costFunction(i, coverage, costIndex, length, type))) # Add backward edges with capacity (counts) of original forward edges and costFunction
-                    graphStar.add_edge(str(nodeNumber), edgeKey[0], capacity = 0, weight=0) # Add backward edges with capacity (counts) of original forward edges and costFunction
-                nodeNumber = nodeNumber+1
-                        
-            localEdgeDict[edgeKey[1]] = nodeList
-            globalEdgeDict[edgeKey[0]] = localEdgeDict
+                graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = 1, weight=int(costFunction(i, coverage, costIndex, length, type))) # Add backward edges with capacity (counts) of original forward edges and costFunction
 
         # Add additional edges from s* and to t*
-        for node in graph.nodes.keys():
+        for node, nodeValue in graph.nodes.items():
             d = sum(int(edge[2]['counts']['c']) for edge in graph.out_edges(node, data=True)) - sum(int(edge[2]['counts']['c']) for edge in graph.in_edges(node, data=True))
             if d>0:
                 graphStar.add_edge(node, 't*', capacity = d, weight = 0)
             elif d<0:
                 graphStar.add_edge('s*', node, capacity = -d, weight = 0)
-        print(nodeNumber)
+        
+        # Define Demand for s* and t*
+        sourceDemand = sum(int(sourceEdge[2]['capacity']) for sourceEdge in graphStar.out_edges('s*', data=True))
+        drainDemand = sum(int(drainEdge[2]['capacity']) for drainEdge in graphStar.in_edges('t*', data=True))
+        # Write DemandDictionary
+        nodeDemand = {}
+        for nodeKey, nodeValue in graphStar.nodes.items():
+            if nodeKey == 't*':
+                nodeDemand [nodeKey] = drainDemand
+            elif nodeKey == 's*':
+                nodeDemand [nodeKey] = -sourceDemand
+            else:
+                nodeDemand[nodeKey] = 0
+        
+        # Set Demand for each node in Off-Set Network
+        nx.set_node_attributes(graphStar, nodeDemand, name='demand')
+        
+        # Calculate min_cost_flow
         print('Trying to calculate maximum Flow at minimal costs')
-        flowDict = nx.max_flow_min_cost(graphStar, 's*', 't*', 'capacity', 'weight')
+        flowDict = nx.min_cost_flow(graphStar, 'demand', 'capacity', 'weight')
         print('Finished calculating maximum Flow at minimal costs')
         
         # Correct on cov(u,v) on original graph
         for edgeKey, edgeValue in graph.edges.items():
-            nodeList = globalEdgeDict[edgeKey[0]][edgeKey[1]]    
-            edgeFlowForward = sum(flowDict[edgeKey[0]][nodeList[i]] for i in range(len(nodeList)))
-            edgeFlowBackward = sum(flowDict[edgeKey[1]][nodeList[i]] for i in range(len(nodeList)))
+            edgeFlowForward = sum (flowDict[edgeKey[0]][edgeKey[1]][i] for i in range(len(flowDict[edgeKey[0]][edgeKey[1]])))
+            edgeFlowBackward = sum (flowDict[edgeKey[1]][edgeKey[0]][i] for i in range(len(flowDict[edgeKey[1]][edgeKey[0]])))  
             edgeValue['counts']['c'] = edgeValue['counts']['c'] + edgeFlowForward - edgeFlowBackward     
         flow = 0 
         flowDrain = 0
