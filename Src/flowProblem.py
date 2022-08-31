@@ -169,9 +169,9 @@ def writeGStarQuadratic(graph:dict, costIndex:int):
     nx.set_node_attributes(graphStar, nodeDemand, name='demand')
     
     # Calculate min_cost_flow
-    #print('Trying to calculate maximum Flow at minimal costs')
+    print('Trying to calculate maximum Flow at minimal costs')
     flowDict = nx.min_cost_flow(graphStar, 'demand', 'capacity', 'weight')
-    #print('Finished calculating maximum Flow at minimal costs')
+    print('Finished calculating maximum Flow at minimal costs')
     
     # Correct on cov(u,v) on original graph
     for edgeKey, edgeValue in graph.edges.items():
@@ -264,19 +264,20 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow):
             # Forward
             n = max(int(node) for node in list(graph.nodes()))+1 # Define length of matrix
             DP = np.zeros((n,n), dtype=int) # Initialize Matrix
-            queue = [] # Initialize Priority Queue
+            queue = [] # Initialize Queue
             queue.append('0') # Append first Item
             v = queue.pop(0) # Pop item an read first item
-            succ = list(graph.adj[v]) 
-            for u in succ: 
-                DP[int(v)][int(u)] = 1 
-                queue.append(u)
+            succ = list(graph.adj[v]) # List all successors of source
+            # Use breadth first search (BSF) for visiting all nodes
+            for u in succ:  
+                DP[int(v)][int(u)] = 1 # Set length of source to successors to 1
+                queue.append(u) # append all successors of source node to the queue
             while(len(queue)>0):
-                v = queue.pop(0)
-                succ = list(graph.adj[v])
-                for u in succ:
-                    DP[int(v)][int(u)] = max(DP[int(x)][int(v)] for x in graph.predecessors(v)) + 1 
-                    queue.append(u)
+                v = queue.pop(0) # Get first item of the queue
+                succ = list(graph.adj[v]) # list all succesors of v
+                for u in succ:  
+                    DP[int(v)][int(u)] = max(DP[int(x)][int(v)] for x in graph.predecessors(v)) + 1 # extend the longest path including v by 1 
+                    queue.append(u) # append all sucessors of v to the queue
 
             # Backtracking
             transcript = []
@@ -337,9 +338,9 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow):
                         graph.remove_edge(transcript[i], transcript[i+1])
                 flow = flow - maxFlow
                 #print(transcript)
-        # if flow>0:
-        #     print(DP)
-        # print('flowDecompositionDP with maximumFlow and residualFlow = ' + str(flow))
+        if flow>0:
+            print(DP)
+        print('flowDecompositionDP with maximumFlow and residualFlow = ' + str(flow))
 
     # Second Option with One matrix 
         # n = max(int(node) for node in list(graph.nodes()))+1
