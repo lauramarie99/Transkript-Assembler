@@ -40,17 +40,20 @@ if(sys.argv[1] =="-help"):
     print("-flowOptimization: Use flow-based optimization for establishing a set of paths")
     print("--> specify how flow decomposition is being attained:")
     print("-- TLLP: (=TranscriptListLongestPath) in every step the total flow will be reduced by the flow of the longest path of the previously generated set of transcripts")
-    print("-- TLMP: (=TranscriptListMaximumFlow) in every step the total flow will be reduced by the flow of the path with the maximumFlow of the previously generated set of transcripts")
+    print("-- TLMF: (=TranscriptListMaximumFlow) in every step the total flow will be reduced by the flow of the path with the maximumFlow of the previously generated set of transcripts")
     print("--> Caution: For the last two options we recommend using -full, because combining -multi, -paired, -paired2 or -opt with flow-based optimization will probably not accomplish in an optimal solution.")
     print("-- DPLP: (=DynamicProgrammingLongestPath) in every step the total flow will be reduced by the flow of the longest path obtained via dynamic programming (prior establishing the set of paths is not needed for this option)")
     print("-- DPMF: (=DynamicProgrammingMaximumFlow): in every step the total flow will be reduced by the flow of the path with maximumFlow obtained via dynamic programming (prior establishing the set of paths is not needed for this option)")
-    print("--> Default Value: is TranscriptListLongestPath")
+    print("--> Default Value: TLLP (=TranscriptListLongestPath")
     print("-costFunctionX: Specify the costFunction used for flow-based optimization with X")
-    print("--> 0: f(x) = x (default)" )
+    print("--> 0: f(x) = x" )
     print("--> 1: f(x) = x/cov(u,v)")
     print("--> 2: f(x) = x/sqrt(cov(u,v))")
-    print("--> 3: f(x) = x^2*|l(u,v)|-1/cov(u,v")
-    print("--> Default value is 1")
+    print("--> 3: f(x) = x^2 (1st Approximization)")
+    print("--> 4: f(x) = x^2 (2nd Approximization)")
+    print("--> 5: f(x) = x^2/cov(u,v)")
+    print("--> 5: f(x) = x^2/(cov(u,v)*length(u,v))")
+    print("--> Default value is 0")
 
 #read in file to estimate calculation time
 else:
@@ -64,6 +67,7 @@ else:
         fileEndReached = False
         f.readline()  # skip ---- seperator line
         geneCounter = 0
+        residualFlowList = []
         while not fileEndReached:
 
             # READ META AND BIN DATA FROM FILE
@@ -182,10 +186,10 @@ else:
                             costFunctionIndex = int(sys.argv[i+1])
                             break
                         
-                print('CostFunctionIndex = ' + str(costFunctionIndex))
+                #print('CostFunctionIndex = ' + str(costFunctionIndex))
                 skipOptimization = False
                 
-                geneCounter = geneCounter +1
+                print(geneCounter)
               
                 # Catch infeasible models or models that are unbounded below
                 try:
@@ -199,15 +203,26 @@ else:
                 # Execute specified option
                 if not skipOptimization:
                     if "-TLLP" in sys.argv:
-                        optimizedTranscripts = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'longestPath', flow)
+                        optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'longestPath', flow)
+                        optimizedTranscripts.append(optimizedGeneTranscripts)
                     elif "-TLMF" in sys.argv:
-                        optimizedTranscripts = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'maximumFlow', flow)
+                        optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'maximumFlow', flow)
+                        optimizedTranscripts.append(optimizedGeneTranscripts)
                     elif "-DPLP" in sys.argv:
-                        optimizedTranscripts = flowProblem.flowDecompositionDP(newGraph, 'longestPath', flow)
+                        optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionDP(newGraph, 'longestPath', flow)
+                        optimizedTranscripts.append(optimizedGeneTranscripts)
                     elif "-DPMF" in sys.argv:
-                        optimizedTranscripts = flowProblem.flowDecompositionDP(newGraph, 'maximumFlow', flow)
+                        optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionDP(newGraph, 'maximumFlow', flow)
+                        optimizedTranscripts.append(optimizedGeneTranscripts)
+                        if residualFlow > 0:
+                            residualFlowList.append(geneCounter)
+                            print('Residual Flow:' + str(residualFlow) + 'left')
                     else: 
-                        optimizedTranscripts = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'longestPath', flow)
+                        optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'longestPath', flow)
+                        optimizedTranscripts.append(optimizedGeneTranscripts)
+                
+                geneCounter = geneCounter + 1
+
                     # ADD TRANSCRIPTS TO GTF FILE
                 """
                 elif(sys.argv[2] == "-GTF"):
@@ -223,3 +238,4 @@ else:
         print("Gesamtanzahl Transkripte: ", no_trans)
         print('{:5.3f}s'.format(end - start))
         # file_gtf.close()
+print(residualFlowList)

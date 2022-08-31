@@ -17,23 +17,16 @@ def writeGStar(graph:dict, costIndex:int):
 def writeGStarLinear(graph:dict, costIndex:int):
     graphStar = nx.DiGraph() # Define new Graph
     graphStar.add_nodes_from(graph.nodes.keys()) # Add all nodes from the original Graph
-    
-    #s0Label = str(max(int(nodeNumber) for nodeNumber in graphStar.nodes.keys())+1) # Set s0 label
     graphStar.add_node('s0') # Add s0
-    graphStar.add_edge('s0', '0', weight = 0, capacity=float('inf')) # add s0 -> s
-    
-    #t0Label = str(max(int(nodeNumber) for nodeNumber in graphStar.nodes.keys())+1) # set t0 label
     graphStar.add_node('t0') # Add t0
+    graphStar.add_node('s*') # add s*
+    graphStar.add_node('t*') # add t*
+    
+    graphStar.add_edge('s0', '0', weight = 0, capacity=float('inf')) # add s0 -> s
     graphStar.add_edge('1', 't0', weight = 0, capacity=float('inf')) # add t -> t0
     graphStar.add_edge('t0', 's0', weight = 0, capacity=float('inf')) # add t0 -> s0    
-    #sStarLabel = str(max(int(nodeNumber) for nodeNumber in graphStar.nodes.keys())+1) # set sStarLabel
-    graphStar.add_node('s*') # add s*
-    
-    #tStarLabel = str(max(int(nodeNumber) for nodeNumber in graphStar.nodes.keys())+1) # Set tStarLabek
-    graphStar.add_node('t*') # add t*
 
-    # Add Edges from original graph with infinite capacity and cost function
-    maxCoverage = max(edgeValue['counts']['c'] for edgeKey, edgeValue in graph.edges.items())
+    maxCoverage = max(edgeValue['counts']['c'] for edgeValue in graph.edges.values())
 
     # Define scalingFactor to prevent floating point numbers in 1/cov(u,v) or 1/sqrt{cov(u,v)}
     if costIndex == 0:
@@ -41,9 +34,8 @@ def writeGStarLinear(graph:dict, costIndex:int):
     else:
         scalingFactor = maxCoverage * maxCoverage
     
-    # Now add edges to the graph
+    #Add Coverage to Helper Edges
     for edgeKey, edgeValue in graph.edges.items():
-        #Add Coverage to Helper Edges
         if edgeValue['type'] == 'Helper':
             if edgeKey[0] =='0':
                 endNode = edgeKey[1]
@@ -57,11 +49,7 @@ def writeGStarLinear(graph:dict, costIndex:int):
                     print('More than one following edge')
                 for edge in graph.in_edges(startNode, data=True):
                     edgeValue['counts']['c'] = edge[2]['counts']['c'] # Set Coverage/Count of drain Edges to coverage/count of preceding edges
-        coverage = edgeValue['counts']['c'] # Define coverage variable and assign count to it
-        type = edgeValue['type']
-        graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = float('inf'), weight=int(scalingFactor*(costFunction(1, coverage, costIndex, 0, type)))) # Add Forward edge with capacity infinite and weight = costFunction
-        graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = coverage, weight=int(scalingFactor*(costFunction(1, coverage, costIndex, 0, type)))) # Add backward edges with capacity (counts) of original forward edges and costFunction
-        
+
     # Add additional edges from s* and to t*
     for node in graph.nodes.keys():
         d = sum(int(edge[2]['counts']['c']) for edge in graph.out_edges(node, data=True)) - sum(int(edge[2]['counts']['c']) for edge in graph.in_edges(node, data=True))
@@ -69,6 +57,14 @@ def writeGStarLinear(graph:dict, costIndex:int):
             graphStar.add_edge(node, 't*', capacity = d, weight = 0)
         elif d<0:
             graphStar.add_edge('s*', node, capacity = -d, weight = 0)
+
+    # Now add edges to the graph
+    for edgeKey, edgeValue in graph.edges.items():
+        coverage = edgeValue['counts']['c'] # Define coverage variable and assign count to it
+        type = edgeValue['type']
+        length = edgeValue['length']
+        graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = float('inf'), weight=int(scalingFactor*(costFunction(1, 0, coverage, costIndex, length, type)))) # Add Forward edge with capacity infinite and weight = costFunction
+        graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = coverage, weight=int(scalingFactor*(costFunction(1, 0, coverage, costIndex, length, type)))) # Add backward edges with capacity (counts) of original forward edges and costFunction
     
     # Calculate max_flow at min cost
     print('Trying to calculate maximum flow at minimal costs')
@@ -84,89 +80,114 @@ def writeGStarLinear(graph:dict, costIndex:int):
     return(graphStar, graph, flow)    
 
 def writeGStarQuadratic(graph:dict, costIndex:int):
-    if sum(edgeValue['counts']['c'] for edgeKey, edgeValue in graph.edges.items())>50000:
-        print('Number of additional edges is too high to calculate maximum Flow at minimum costs')
-        return 0, 1, 2
-    else:
-        graphStar = nx.MultiDiGraph() # Define new Graph
-        graphStar.add_nodes_from(graph.nodes.keys()) # Add all nodes from the original Graph
-        graphStar.add_node('s0') # Add s0
-        graphStar.add_edge('s0', '0', capacity=float('inf'), weight = 0) # add s0 -> s
-        graphStar.add_node('t0') # Add t0
-        graphStar.add_edge('1', 't0', capacity=float('inf'), weight = 0) # add t -> t0
-        graphStar.add_edge('t0', 's0', capacity=float('inf'),weight = 0) # add t0 -> s0    
-        graphStar.add_node('s*') # add s*
-        graphStar.add_node('t*') # add t*
+    graphStar = nx.MultiDiGraph() # Define new Graph
+    graphStar.add_nodes_from(graph.nodes.keys()) # Add all nodes from the original Graph
+    graphStar.add_node('s0') # Add s0    
+    graphStar.add_node('t0') # Add t0
+    graphStar.add_node('s*') # add s*
+    graphStar.add_node('t*') # add t*
 
-        # Add Edges from original graph with infinite capacity and cost function    
-        for edgeKey, edgeValue in graph.edges.items():
-            #Add Coverage to Helper Edges
-            if edgeValue['type'] == 'Helper':
-                if edgeKey[0] =='0':
-                    endNode = edgeKey[1]
-                    if (len(graph.out_edges(endNode, data=True)))>1:
-                        print('More than one following edge')
-                    for edge in graph.out_edges(endNode, data=True):
-                        edgeValue['counts']['c'] = edge[2]['counts']['c']
-                elif edgeKey[1] =='1':
-                    startNode = edgeKey[0]
-                    if (len(graph.in_edges(startNode, data=True)))>1:
-                        print('More than one following edge')
-                    for edge in graph.in_edges(startNode, data=True):
-                        edgeValue['counts']['c'] = edge[2]['counts']['c']    
-            coverage = int(edgeValue['counts']['c'])
-            length = edgeValue['length']
-            type = edgeValue['type']
-            for i in range(1, coverage+1):
-                # Add forward edges
-                graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = 1, weight=int(costFunction(i, coverage, costIndex, length, type))) # Add Forward edge with capacity infinite and weight = costFunction
-                # Add Backward Edges
-                graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = 1, weight=int(costFunction(i, coverage, costIndex, length, type))) # Add backward edges with capacity (counts) of original forward edges and costFunction
-
-        # Add additional edges from s* and to t*
-        for node, nodeValue in graph.nodes.items():
-            d = sum(int(edge[2]['counts']['c']) for edge in graph.out_edges(node, data=True)) - sum(int(edge[2]['counts']['c']) for edge in graph.in_edges(node, data=True))
-            if d>0:
-                graphStar.add_edge(node, 't*', capacity = d, weight = 0)
-            elif d<0:
-                graphStar.add_edge('s*', node, capacity = -d, weight = 0)
-        
-        # Define Demand for s* and t*
-        sourceDemand = sum(int(sourceEdge[2]['capacity']) for sourceEdge in graphStar.out_edges('s*', data=True))
-        drainDemand = sum(int(drainEdge[2]['capacity']) for drainEdge in graphStar.in_edges('t*', data=True))
-        # Write DemandDictionary
-        nodeDemand = {}
-        for nodeKey, nodeValue in graphStar.nodes.items():
-            if nodeKey == 't*':
-                nodeDemand [nodeKey] = drainDemand
-            elif nodeKey == 's*':
-                nodeDemand [nodeKey] = -sourceDemand
+    graphStar.add_edge('s0', '0', capacity=float('inf'), weight = 0) # add s0 -> s
+    graphStar.add_edge('1', 't0', capacity=float('inf'), weight = 0) # add t -> t0
+    graphStar.add_edge('t0', 's0', capacity=float('inf'),weight = 0) # add t0 -> s0    
+    
+    #Add Coverage to Helper Edges
+    for edgeKey, edgeValue in graph.edges.items():
+        if edgeValue['type'] == 'Helper':
+            if edgeKey[0] =='0':
+                endNode = edgeKey[1]
+                if (len(graph.out_edges(endNode, data=True)))>1:
+                    print('More than one following edge')
+                for edge in graph.out_edges(endNode, data=True):
+                    edgeValue['counts']['c'] = edge[2]['counts']['c']
+            elif edgeKey[1] =='1':
+                startNode = edgeKey[0]
+                if (len(graph.in_edges(startNode, data=True)))>1:
+                    print('More than one following edge')
+                for edge in graph.in_edges(startNode, data=True):
+                    edgeValue['counts']['c'] = edge[2]['counts']['c']
+    
+    # Add additional edges from s* and to t*
+    for node in graph.nodes.keys():
+        d = sum(int(edge[2]['counts']['c']) for edge in graph.out_edges(node, data=True)) - sum(int(edge[2]['counts']['c']) for edge in graph.in_edges(node, data=True))
+        if d>0:
+            graphStar.add_edge(node, 't*', capacity = d, weight = 0)
+        elif d<0:
+            graphStar.add_edge('s*', node, capacity = -d, weight = 0)
+    
+    # Define Demand for s* and t*
+    sourceDemand = sum(int(sourceEdge[2]['capacity']) for sourceEdge in graphStar.out_edges('s*', data=True))
+    drainDemand = sum(int(drainEdge[2]['capacity']) for drainEdge in graphStar.in_edges('t*', data=True))
+    
+    # Add Edges from original graph with infinite capacity and cost function    
+    counter = 0
+    for edgeKey, edgeValue in graph.edges.items():    
+        coverage = int(edgeValue['counts']['c']) # Assign Coverage of the particular edge to edge
+        maxAdditionalEdgeCount = 100 # Define maxAdditionalEdgeCount
+        length = max(1, edgeValue['length']) # Assign length of the edge to the variable "lenght", Helper edges will receive the length 0
+        type = edgeValue['type'] # Assign edge type to the variable type
+        if costIndex <= 4: # Cost-Function: 3: i; 4:((i+1)*(i+1) - i*i) -> requires very long computation time, since no stepSize is included
+            for i in range(coverage):
+                counter = counter + 2 # Increase EdgeCounter
+                graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = 1, weight=int(costFunction(i, 1, coverage, costIndex, length, type))) # Add Forward edge with capacity 1 and weight = costFunction
+                graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = 1, weight=int(costFunction(i, 1, coverage, costIndex, length, type))) # Add backward edges with capacity 1 and costFunction    
+            counter = counter + 1 # Increase EdgeCounter
+            graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = sourceDemand, weight=int(costFunction(i, 1, coverage, costIndex, length, type))) # Add Forward edge with capacity sourceDemand and weight = costFunction
+        elif costIndex == 6: # CostFunction i/coverage
+            scalingFactor = 10e7
+            for i in range(coverage+1):
+                counter = counter + 2 # Increase EdgeCounter
+                graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = 1, weight=int(scalingFactor*(costFunction(i, 1, coverage, costIndex, length, type)))) # Add Forward edge with capacity 1 and weight = costFunction
+                graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = 1, weight=int(scalingFactor*(costFunction(i, 1, coverage, costIndex, length, type)))) # Add backward edges with capacity 1 and costFunction    
+            counter = counter + 1
+            graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = sourceDemand, weight=int(scalingFactor*(costFunction(i, 1, coverage, costIndex, length, type)))) # Add Forward edge with capacity sourceDemand and weight = costFunction
+        else: # CostFunctions 5:((i+x)*(i+x) - i*i)/x; 7: ((i+x)*(i+x) - i*i)/x*cov(u,v)
+            if costIndex == 7: 
+                scalingFactor = 10e7 # ScalingFactor needed for converting coverages into integer numbers
             else:
-                nodeDemand[nodeKey] = 0
-        
-        # Set Demand for each node in Off-Set Network
-        nx.set_node_attributes(graphStar, nodeDemand, name='demand')
-        
-        # Calculate min_cost_flow
-        print('Trying to calculate maximum Flow at minimal costs')
-        flowDict = nx.min_cost_flow(graphStar, 'demand', 'capacity', 'weight')
-        print('Finished calculating maximum Flow at minimal costs')
-        
-        # Correct on cov(u,v) on original graph
-        for edgeKey, edgeValue in graph.edges.items():
-            edgeFlowForward = sum (flowDict[edgeKey[0]][edgeKey[1]][i] for i in range(len(flowDict[edgeKey[0]][edgeKey[1]])))
-            edgeFlowBackward = sum (flowDict[edgeKey[1]][edgeKey[0]][i] for i in range(len(flowDict[edgeKey[1]][edgeKey[0]])))  
-            edgeValue['counts']['c'] = edgeValue['counts']['c'] + edgeFlowForward - edgeFlowBackward     
-        flow = 0 
-        flowDrain = 0
-        for edge in graph.out_edges('0', data=True):
-            flow = flow + edge[2]['counts']['c']
-        for edge in graph.in_edges('1', data=True):
-            flowDrain = flowDrain + edge[2]['counts']['c']
-        return(graphStar, graph, flow)    
-  
+                scalingFactor = 1
+            x = int(max(1, math.floor(coverage/maxAdditionalEdgeCount))) # Calculate necessary stepSize (x) for each edge to achieve at maximum maxAdditionalEdgeCount edges 
+            for i in range(0, min(coverage,maxAdditionalEdgeCount*x),x):
+                graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = x, weight=int(scalingFactor*(costFunction(i, x, coverage, costIndex, length, type)))) # Add Forward edge with capacity x and weight = costFunction
+                graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = x, weight=int(scalingFactor*(costFunction(i, x, coverage, costIndex, length, type)))) # Add backward edges with capacity x and weight = costFunction    
+                counter = counter + 2 # increase EdgeCounter
+            graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = sourceDemand, weight=int(scalingFactor*(costFunction(i, sourceDemand, coverage, costIndex, length, type)))) # Add Forward edge with capacity sourcedemand and weight = costFunction
+            counter = counter + 1 # increase EdgeCounter
+    #print('Anzahl neuer Kanten = ' + str(counter))
 
-def costFunction (i, coverage:int, costIndex, length:int, type:str):
+    # Write DemandDictionary
+    nodeDemand = {}
+    for nodeKey in graphStar.nodes.keys():
+        if nodeKey == 't*':
+            nodeDemand [nodeKey] = drainDemand
+        elif nodeKey == 's*':
+            nodeDemand [nodeKey] = -sourceDemand
+        else:
+            nodeDemand[nodeKey] = 0
+    
+    # Set Demand for each node in Off-Set Network
+    nx.set_node_attributes(graphStar, nodeDemand, name='demand')
+    
+    # Calculate min_cost_flow
+    #print('Trying to calculate maximum Flow at minimal costs')
+    flowDict = nx.min_cost_flow(graphStar, 'demand', 'capacity', 'weight')
+    #print('Finished calculating maximum Flow at minimal costs')
+    
+    # Correct on cov(u,v) on original graph
+    for edgeKey, edgeValue in graph.edges.items():
+        edgeFlowForward = sum (flowDict[edgeKey[0]][edgeKey[1]][i] for i in range(len(flowDict[edgeKey[0]][edgeKey[1]]))) # Sum flow on all forward edges
+        edgeFlowBackward = sum (flowDict[edgeKey[1]][edgeKey[0]][i] for i in range(len(flowDict[edgeKey[1]][edgeKey[0]]))) # Sum flow on all backward edges
+        edgeValue['counts']['c'] = edgeValue['counts']['c'] + edgeFlowForward - edgeFlowBackward # calculate flow in the original graph
+    
+    # Calculate total flow 
+    flow = 0 
+    #totalFlow = sum(edge[2]['counts']['c'] for edge in graph.out_edges('0', data=True))
+    for edge in graph.out_edges('0', data=True):
+        flow = flow + edge[2]['counts']['c']
+    return(graphStar, graph, flow)    
+
+# Specify costFunctions
+def costFunction (i, x: int, coverage:int, costIndex, length:int, type:str):
     if costIndex == 0:
         return 1
     elif costIndex == 1:
@@ -175,50 +196,66 @@ def costFunction (i, coverage:int, costIndex, length:int, type:str):
         return 1/math.sqrt(coverage)
     elif costIndex == 3:
         return i
-        # if type == 'Exon':
-        #     return i*(abs(length)-1)/coverage
-        # else:
-        #     return i/coverage
+    elif costIndex == 4:
+        return ((i+1)*(i+1) - i*i)
+    elif costIndex == 5:
+        return ((i+x)*(i+x) - i*i)
+    elif costIndex == 6:
+        return i/coverage
+    elif costIndex == 7:
+        return ((i+x)*(i+x) - i*i)/coverage
+    elif costIndex == 8:
+        return ((i+x)*(i+x) - i*i)*length/coverage
 
 def flowDecompositionWithTranscriptlist(graph:dict, transcripts:list, decomposition_option:str, flow):
-    #transcriptsCopy = deepcopy(transcripts)
-    transcriptsCopy = list(nx.all_simple_paths(graph, '0', '1'))
+    # Get transcripts
+    if len(transcripts)>0:
+        # Use previously computed transcripts by enumeration function 
+        transcriptsCopy = deepcopy(transcripts) 
+    else:
+        # Use NetworkX build-in method to obtain all possible paths
+        transcriptsCopy = list(nx.all_simple_paths(graph, '0', '1')) 
+    # define new list for optimized transcripts
     optimizedTranscripts = []
-    if decomposition_option == 'longestPath':
-        while (flow>0 and len(transcriptsCopy)>0):
-            longestPath = transcriptsCopy[transcriptsCopy.index(max(transcriptsCopy, key=len))]
-            minFlow = min(graph.edges[longestPath[i], longestPath[i+1]]['counts']['c'] for i in range(len(longestPath)-1))
-            if flow - minFlow >= 0:
-                for i in range(len(longestPath)-1):
-                    graph.edges[longestPath[i], longestPath[i+1]]['counts']['c'] = graph.edges[longestPath[i], longestPath[i+1]]['counts']['c'] - minFlow 
-                flow = flow - minFlow
-                optimizedTranscripts.append(longestPath) # Add path to optimized TranscriptList
+    # Compute FlowDecomposition by removing the flow of the longest path from the transcript list
+    if decomposition_option == 'longestPath': 
+        while (flow>0 and len(transcriptsCopy)>0): 
+            longestPath = transcriptsCopy[transcriptsCopy.index(max(transcriptsCopy, key=len))] # get longest Path from transcriptsCopy List
+            minFlow = min(graph.edges[longestPath[i], longestPath[i+1]]['counts']['c'] for i in range(len(longestPath)-1)) # Define minimal flow on this path = pathFlow
+            if flow - minFlow >= 0: # If removal of this flow results in non-negative flow
+                for i in range(len(longestPath)-1): 
+                    graph.edges[longestPath[i], longestPath[i+1]]['counts']['c'] = graph.edges[longestPath[i], longestPath[i+1]]['counts']['c'] - minFlow # reduce flow of every edge by this flow
+                flow = flow - minFlow # reduce TotalFlow by pathFlow
+                optimizedTranscripts.append((longestPath, minFlow)) # Add path to optimized TranscriptList
             transcriptsCopy.remove(longestPath) # Remove path from transcriptsCopy
         print('flowDecompositionWithTranscriptlist and longestPath ' + str(flow))
+    
+    # Compute FlowDecomposition by removing the flow of the path with maximumFlow from the transcript list
     elif decomposition_option == 'maximumFlow':
         while (flow>0 and len(transcriptsCopy)>0):
-            maxFlow = 0
-            maxFlowPath = []
-            flowCounter = 0
+            maxFlow = 0 # set maxFlow to 0
+            maxFlowPath = [] # define new List with maxFlowPath
+            flowCounter = 0 # define new FlowCounter
             for transcript in transcriptsCopy:
-                minFlow = min(graph.edges[transcript[i], transcript[i+1]]['counts']['c'] for i in range(len(transcript)-1))
-                if minFlow > maxFlow:
-                    maxFlow = minFlow
+                # Read the minimum flow for every path of trancsriptsCopy 
+                minFlow = min(graph.edges[transcript[i], transcript[i+1]]['counts']['c'] for i in range(len(transcript)-1)) 
+                if minFlow > maxFlow: # if it's bigger than the already found flow -> overwrite it
+                    maxFlow = minFlow 
                     maxFlowPath = transcript
                     flowCounter = 1
-            if flowCounter == 0:
+            if flowCounter == 0: # break if there's no transcript with higher flow break from while loop to prevent stucking in a endless circle
                 break
-            if ((flow - maxFlow) >= 0) :
+            if ((flow - maxFlow) >= 0) : # if the remaining total flow is non-negative remove this flow and add the path to optimized transcripts  
                 for i in range(len(maxFlowPath)-1):
                     graph.edges[maxFlowPath[i], maxFlowPath[i+1]]['counts']['c'] = graph.edges[maxFlowPath[i], maxFlowPath[i+1]]['counts']['c'] - maxFlow 
                 flow = flow - maxFlow
-                optimizedTranscripts.append(maxFlowPath)
-            transcriptsCopy.remove(maxFlowPath)
+                optimizedTranscripts.append((maxFlowPath, maxFlow))
+            transcriptsCopy.remove(maxFlowPath) # remove path from the transcriptList in any case 
         print('flowDecompositionWithTranscriptlist and maxFlow ' + str(flow))
     else:
         print('Error, please specify decomposition option.')
         os.exit()
-    return optimizedTranscripts
+    return optimizedTranscripts, flow
 
 def flowDecompositionDP (graph: dict, decomposition_option:str, flow):
     optimizedTranscripts = []
@@ -252,7 +289,6 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow):
                 maxIndex = np.argmax(DP, axis=0)[v]
                 length = DP[maxIndex][v]
             transcript.reverse()
-            optimizedTranscripts.append(transcript)
             
             # Eliminate edges with minimal flow
             minFlow = min(graph.edges[transcript[i], transcript[i+1]]['counts']['c'] for i in range(len(transcript)-1)) # Define minFlow
@@ -261,22 +297,10 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow):
                 if graph.edges[transcript[i], transcript[i+1]]['counts']['c'] == 0:
                     graph.remove_edge(transcript[i], transcript[i+1])
             flow = flow - minFlow
+            optimizedTranscripts.append((transcript, minFlow))
         print('flowDecompositionDP with longestPath and residualFlow = ' + str(flow))
 
     elif decomposition_option == 'maximumFlow':
-        # n = max(int(node) for node in list(graph.nodes()))+1
-        # DP = np.zeros((n,n), dtype=int) # Initialize DP - Matrix
-        # queue = [] # Initialize PriorityQueue
-        # queue.append('0') # Add source to Priority Queue 
-        # while(len(queue)>0): # Fill DP-Matrix
-        #     v = queue.pop(0) 
-        #     for u in list(graph.adj[v]):
-        #         queue.append(u)
-        #         DP[int(v)][int(u)] = graph.edges[v,u]['counts']['c']
-        # flowSource = sum(DP[0][i] for i in range(len(DP)))
-        # flowDrain = sum(DP[i][1] for i in range(len(DP)))
-        # print(flowSource)
-        # print(flowDrain)
         while(flow>0):        
             # Forward 
             n = max(int(node) for node in list(graph.nodes()))+1
@@ -304,7 +328,7 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow):
                     maxIndex = np.argmax(DP, axis=0)[maxIndex]
                     transcript.append(str(maxIndex))
                 transcript.reverse()
-                optimizedTranscripts.append(transcript)
+                optimizedTranscripts.append((transcript, maxFlow))
                 
                 # Eliminate edges with minimal flow
                 for i in range(len(transcript)-1):
@@ -312,10 +336,10 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow):
                     if graph.edges[transcript[i], transcript[i+1]]['counts']['c'] == 0:
                         graph.remove_edge(transcript[i], transcript[i+1])
                 flow = flow - maxFlow
-                print(transcript)
-        if flow>0:
-            print(DP)
-        print('flowDecompositionDP with maximumFlow and residualFlow = ' + str(flow))
+                #print(transcript)
+        # if flow>0:
+        #     print(DP)
+        # print('flowDecompositionDP with maximumFlow and residualFlow = ' + str(flow))
 
     # Second Option with One matrix 
         # n = max(int(node) for node in list(graph.nodes()))+1
@@ -348,5 +372,5 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow):
         #     for i in range(len(transcript)-1):
         #         DP[int(transcript[i])][int(transcript[i+1])] = DP[int(transcript[i])][int(transcript[i+1])] - maxFlow
         #     flow = flow - maxFlow
-    return optimizedTranscripts
+    return (optimizedTranscripts, flow)
 
