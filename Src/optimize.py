@@ -1,7 +1,22 @@
 # Import packages
 import gurobipy as gp
 from gurobipy import GRB
+import time
 
+def cb(model, where):
+    if where == GRB.Callback.MIPNODE:
+        # Get model objective
+        obj = model.cbGet(GRB.Callback.MIPNODE_OBJBST)
+
+        # Has objective changed?
+        if abs(obj - model._cur_obj) > 1e-8:
+            # If so, update incumbent and time
+            model._cur_obj = obj
+            model._time = time.time()
+
+    # Terminate if objective has not improved in 20s
+    if time.time() - model._time > 2:
+        model.terminate()
 
 def model(G_clean, transcripts:list, norm, sparsity_constr, factor:int):
     # Extract edge type and counts from graph file into dictionary
@@ -96,8 +111,10 @@ def model(G_clean, transcripts:list, norm, sparsity_constr, factor:int):
         else:
             model.setObjective(norm2_4, GRB.MINIMIZE)
 
-    model.optimize()
-
+    model._cur_obj = float('inf')
+    model._time = time.time()
+    model.optimize(callback=cb)
+    
     # Return results
     var_dict = {}
     try:
