@@ -131,17 +131,17 @@ else:
             # OPTIMIZATION
             if("-opt" in sys.argv):
                 if("-norm0" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L0", "L0", 1)
+                    var_dict = optimize.model(Graph, transcripts, "L0", "L0", 10)
                 elif ("-norm0" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L0", "L1", 1)
+                    var_dict = optimize.model(Graph, transcripts, "L0", "L1", 10)
                 elif ("-norm1" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L1", "L0", 1)
+                    var_dict = optimize.model(Graph, transcripts, "L1", "L0", 10)
                 elif ("-norm1" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L1", "L1", 1)
+                    var_dict = optimize.model(Graph, transcripts, "L1", "L1", 10)
                 elif ("-norm2" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L2", "L0", 1)
+                    var_dict = optimize.model(Graph, transcripts, "L2", "L0", 10)
                 elif ("-norm2" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L2", "L1", 1)
+                    var_dict = optimize.model(Graph, transcripts, "L2", "L1", 10)
                 elif ("-norm0" in sys.argv):
                     var_dict = optimize.model(Graph, transcripts, "L0", None, 0)
                 elif ("-norm1" in sys.argv):
@@ -222,18 +222,18 @@ else:
                     parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),"Transcript"+str(i))
                     #create list that contains transcripts from all genes and their expression levels. List contains dictionary where key is the gene number (position in file) and values are transcripts and expression level
                     data.append((transcript, var_dict[str(i)]))
-                else:
+                elif ("-opt" not in sys.argv):
                     parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),"Transcript"+str(i))
                     data.append(transcript)
+                #print(transcript)
 
             data_dict[geneCounter] = data
             geneCounter = geneCounter + 1
-                
 
-        # PRINT RESULTS
-        end = time.time()
-        print("Gesamtanzahl Transkripte: ", no_trans)
-        print('{:5.3f}s'.format(end - start))
-        file_gtf.close()
 
+# PRINT RESULTS
+end = time.time()
+print("Gesamtanzahl Transkripte: ", no_trans)
+print('{:5.3f}s'.format(end - start))
+file_gtf.close()
 print(residualFlowList)
