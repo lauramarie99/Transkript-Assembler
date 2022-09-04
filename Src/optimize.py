@@ -100,10 +100,13 @@ def model(G_clean, transcripts:list, norm, sparsity_constr, factor:int):
 
     # Return results
     var_dict = {}
-    for var in model.getVars():
-        if "expression_levels" in var.varName:
-            var_dict[var.varName[18:len(var.varName)-1]] = var.X
-    return var_dict
+    try:
+        for var in model.getVars():
+            if "expression_levels" in var.varName:
+                var_dict[var.varName[18:len(var.varName)-1]] = var.X
+        return var_dict
+    except AttributeError:
+        return None
 
 
 
