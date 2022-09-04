@@ -17,6 +17,7 @@ import os
 start = time.time()
 start_gene = time.time()
 no_trans = 0
+failed_transcripts = 0
 file_gtf = open("transcripts.gtf", "w")
 data_dict = dict()
 
@@ -131,7 +132,7 @@ else:
             # OPTIMIZATION
             if("-opt" in sys.argv):
                 if("-norm0" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L0", "L0", 10)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L0", sparsity_constr="L0", factor=10)
                 elif ("-norm0" in sys.argv and "-constr1" in sys.argv):
                     var_dict = optimize.model(Graph, transcripts, "L0", "L1", 10)
                 elif ("-norm1" in sys.argv and "-constr0" in sys.argv):
@@ -147,9 +148,13 @@ else:
                 elif ("-norm1" in sys.argv):
                     var_dict = optimize.model(Graph, transcripts, "L1", None, 0)
                 elif ("-norm2" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L2", None, 0)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L2", sparsity_constr=None, factor=0)
                 else:
                     var_dict = optimize.model(Graph, transcripts, "L1", None, 0) # if no norm is specified, norm1 is used
+                
+                if var_dict == None:
+                    failed_transcripts += 1
+                    continue
             
 
                 #function to estimate calculation time
@@ -233,7 +238,8 @@ else:
 
 # PRINT RESULTS
 end = time.time()
-print("Gesamtanzahl Transkripte: ", no_trans)
+print("Number of transcripts: ", no_trans)
 print('{:5.3f}s'.format(end - start))
 file_gtf.close()
+print("Optimization failed for ", failed_transcripts, " gene")
 print(residualFlowList)
