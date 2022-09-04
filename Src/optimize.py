@@ -32,7 +32,7 @@ def model(G_clean, transcripts:list, norm, sparsity_constr, factor:int):
 
     # Add variables
     no_trans = len(transcripts)
-    vars = model.addVars(no_trans, vtype=GRB.CONTINUOUS, name="expression_levels", lb=0.0) # Expression levels of transcripts
+    vars = model.addVars(no_trans, vtype=GRB.INTEGER, name="expression_levels", lb=0) # Expression levels of transcripts
     helper1 = model.addVars(edges, lb=-GRB.INFINITY, vtype=GRB.CONTINUOUS, name="X") # "X" values
 
     # Optimization
