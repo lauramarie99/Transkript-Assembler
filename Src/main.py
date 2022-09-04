@@ -1,5 +1,4 @@
 # IMPORT
-from re import I
 import sys
 import parse_graph_new
 import path_enumeration
@@ -18,6 +17,7 @@ start = time.time()
 start_gene = time.time()
 no_trans = 0
 failed_transcripts = 0
+failed_transcripts_ls = []
 file_gtf = open("transcripts.gtf", "w")
 data_dict = dict()
 
@@ -132,17 +132,17 @@ else:
             # OPTIMIZATION
             if("-opt" in sys.argv):
                 if("-norm0" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L0", sparsity_constr="L0", factor=10)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L0", sparsity_constr="L0", factor=0.1)
                 elif ("-norm0" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L0", "L1", 10)
+                    var_dict = optimize.model(Graph, transcripts, "L0", "L1", 0.05)
                 elif ("-norm1" in sys.argv and "-constr0" in sys.argv):
                     var_dict = optimize.model(Graph, transcripts, "L1", "L0", 10)
                 elif ("-norm1" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L1", "L1", 10)
+                    var_dict = optimize.model(Graph, transcripts, "L1", "L1", 5)
                 elif ("-norm2" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L2", "L0", 10)
+                    var_dict = optimize.model(Graph, transcripts, "L2", "L0", 5)
                 elif ("-norm2" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L2", "L1", 10)
+                    var_dict = optimize.model(Graph, transcripts, "L2", "L1", 2.5)
                 elif ("-norm0" in sys.argv):
                     var_dict = optimize.model(Graph, transcripts, "L0", None, 0)
                 elif ("-norm1" in sys.argv):
@@ -154,6 +154,8 @@ else:
                 
                 if var_dict == None:
                     failed_transcripts += 1
+                    failed_transcripts_ls.append(geneCounter)
+                    geneCounter += 1
                     continue
             
 
@@ -166,7 +168,7 @@ else:
                 print(f"Time for gene: {time_for_gene:.4f}s")
                 time_left = num_genes - len(data_dict) * time_for_gene
                 print(f"Time left:{time_left // 60 // 60:.0f}h {time_left // 60 % 60:.0f}m {time_left % 60:.0f}s")
-    
+                
                 """
                 #save transcripts and their expression levels
                 with open("save.json", 'w') as file:
@@ -186,8 +188,6 @@ else:
                 #print('CostFunctionIndex = ' + str(costFunctionIndex))
                 skipOptimization = False
                 
-                print(geneCounter)
-              
                 # Catch infeasible models or models that are unbounded below
                 try:
                     g_Star, newGraph, flow = flowProblem.writeGStar(Graph, costFunctionIndex)
@@ -217,8 +217,8 @@ else:
                     else: 
                         optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'longestPath', flow)
                         optimizedTranscripts.append(optimizedGeneTranscripts)
-                
-            
+
+
             # ADD TRANSCRIPTS TO GTF FILE
             data = []
             for i in range(len(transcripts)):
@@ -242,4 +242,7 @@ print("Number of transcripts: ", no_trans)
 print('{:5.3f}s'.format(end - start))
 file_gtf.close()
 print("Optimization failed for ", failed_transcripts, " gene")
+print(failed_transcripts_ls)
+print(data_dict)
+print(var_dict)
 print(residualFlowList)
