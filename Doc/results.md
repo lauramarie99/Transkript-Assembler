@@ -22,6 +22,6 @@ Cleaned Graph: 51626 Transkripte in 52-80s
 
 | full    | norm0 | norm1                                                | norm2 |   |
 |---------|-------|------------------------------------------------------|-------|---|
-| nichts  |       | 4min37s 97597 Transkripte 40252 Transkripte 0 failed |       |   |
+| nichts  |       | 4min37s, 40252 Transkripte, 0 failed                 |       |   |
 | constr0 |       |                                                      |       |   |
 | constr1 |       |                                                      |       |   |
