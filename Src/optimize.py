@@ -1,7 +1,22 @@
 # Import packages
 import gurobipy as gp
 from gurobipy import GRB
+import time
 
+def cb(model, where):
+    if where == GRB.Callback.MIPNODE:
+        # Get model objective
+        obj = model.cbGet(GRB.Callback.MIPNODE_OBJBST)
+
+        # Has objective changed?
+        if abs(obj - model._cur_obj) > 1e-8:
+            # If so, update incumbent and time
+            model._cur_obj = obj
+            model._time = time.time()
+
+    # Terminate if objective has not improved in 20s
+    if time.time() - model._time > 2:
+        model.terminate()
 
 def model(G_clean, transcripts:list, norm, sparsity_constr, factor:int):
     # Extract edge type and counts from graph file into dictionary
@@ -32,7 +47,7 @@ def model(G_clean, transcripts:list, norm, sparsity_constr, factor:int):
 
     # Add variables
     no_trans = len(transcripts)
-    vars = model.addVars(no_trans, vtype=GRB.CONTINUOUS, name="expression_levels", lb=0.0) # Expression levels of transcripts
+    vars = model.addVars(no_trans, vtype=GRB.INTEGER, name="expression_levels", lb=0) # Expression levels of transcripts
     helper1 = model.addVars(edges, lb=-GRB.INFINITY, vtype=GRB.CONTINUOUS, name="X") # "X" values
 
     # Optimization
@@ -96,16 +111,19 @@ def model(G_clean, transcripts:list, norm, sparsity_constr, factor:int):
         else:
             model.setObjective(norm2_4, GRB.MINIMIZE)
 
-    model.optimize()
-
+    model._cur_obj = float('inf')
+    model._time = time.time()
+    model.optimize(callback=cb)
+    
     # Return results
     var_dict = {}
-    for var in model.getVars():
-        #print(var.varName)
-        #print(var.X)
-        if "expression_levels" in var.varName:
-            var_dict[var.varName] = var.X
-    return var_dict
+    try:
+        for var in model.getVars():
+            if "expression_levels" in var.varName:
+                var_dict[var.varName[18:len(var.varName)-1]] = var.X
+        return var_dict
+    except AttributeError:
+        return None
 
 
 

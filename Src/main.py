@@ -16,10 +16,10 @@ import os
 start = time.time()
 start_gene = time.time()
 no_trans = 0
-# gene_id = 0
-# file_gtf = open("transcripts.gtf", "w")
+failed_transcripts = 0
+failed_transcripts_ls = []
+file_gtf = open("transcripts.gtf", "w")
 data_dict = dict()
-#read in file to estimate calc time:
 
 # MAIN
 #prints out usage instructions
@@ -68,8 +68,8 @@ else:
         f.readline()  # skip ---- seperator line
         geneCounter = 0
         residualFlowList = []
-        while not fileEndReached:
 
+        while not fileEndReached:
             # READ META AND BIN DATA FROM FILE
             f.readline()  # skip ==META
             Chromosome, Strand, Exons = parse_graph_new.parse_meta(f)
@@ -101,7 +101,6 @@ else:
             if ("-full" in sys.argv):
 
                 transcripts = path_enumeration.enumeration(Graph,[],"0",["0"],"1",False)
-                transcripts_edge = path_enumeration.enumeration(Graph, [], "0", ["0"], "1", True)
                 no_trans = no_trans + len(transcripts)
 
             # MULTI BIN ENUMERATION
@@ -109,7 +108,6 @@ else:
 
                 multi_bins = path_enumeration.get_multibins(Bins)
                 transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],multi_bins,"1",False)
-                transcripts_edge = path_enumeration.enumeration_bins2(Graph, [], "0", ["0"], [], multi_bins, "1", True)
                 no_trans = no_trans + len(transcripts)
 
             # PAIRED BIN ENUMERATION 1
@@ -118,7 +116,6 @@ else:
                 multi_bins = path_enumeration.get_multibins(Bins)
                 paired_bins = pairedbin_enumeration.get_pairedbins(Graph,PairedBins_copy,multi_bins)
                 transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],paired_bins+multi_bins,"1",False)
-                transcripts_edge = path_enumeration.enumeration_bins2(Graph, [], "0", ["0"], [], paired_bins + multi_bins, "1", True)
                 no_trans = no_trans + len(transcripts)
 
 
@@ -128,7 +125,6 @@ else:
                 pairedbins_grouped = pairedbin_enumeration.group_pairs(PairedBins_copy)
                 multi_bins = path_enumeration.get_multibins(Bins)
                 transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],multi_bins,"1",False)
-                transcripts_edge = path_enumeration.enumeration_bins2(Graph, [], "0", ["0"], [], multi_bins, "1", True)
                 transcripts_copy = deepcopy(transcripts)
                 filtered_transcripts = pairedbin_enumeration.filter_transcripts(transcripts_copy,pairedbins_grouped)
                 no_trans = no_trans + len(filtered_transcripts)
@@ -136,31 +132,32 @@ else:
             # OPTIMIZATION
             if("-opt" in sys.argv):
                 if("-norm0" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L0", "L0", 1)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L0", sparsity_constr="L0", factor=0.1)
                 elif ("-norm0" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L0", "L1", 1)
+                    var_dict = optimize.model(Graph, transcripts, "L0", "L1", 0.05)
                 elif ("-norm1" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L1", "L0", 1)
+                    var_dict = optimize.model(Graph, transcripts, "L1", "L0", 10)
                 elif ("-norm1" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L1", "L1", 1)
-                    checkbox = 2
+                    var_dict = optimize.model(Graph, transcripts, "L1", "L1", 5)
                 elif ("-norm2" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L2", "L0", 1)
+                    var_dict = optimize.model(Graph, transcripts, "L2", "L0", 5)
                 elif ("-norm2" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L2", "L1", 1)
+                    var_dict = optimize.model(Graph, transcripts, "L2", "L1", 2.5)
                 elif ("-norm0" in sys.argv):
                     var_dict = optimize.model(Graph, transcripts, "L0", None, 0)
                 elif ("-norm1" in sys.argv):
                     var_dict = optimize.model(Graph, transcripts, "L1", None, 0)
                 elif ("-norm2" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L2", None, 0)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L2", sparsity_constr=None, factor=0)
                 else:
                     var_dict = optimize.model(Graph, transcripts, "L1", None, 0) # if no norm is specified, norm1 is used
+                
+                if var_dict == None:
+                    failed_transcripts += 1
+                    failed_transcripts_ls.append(geneCounter)
+                    geneCounter += 1
+                    continue
             
-
-                #create list that contains transcripts from all genes and their expression levels. List contains dictionary where key is the gene number (position in file) and values are transcripts and expression levels
-                data = [(transcripts_edge[i], var_dict[f"expression_levels[{i}]"]) for i in range(len(transcripts_edge))]
-                data_dict[len(data_dict)] = data
 
                 #function to estimate calculation time
                 os.system('clear')
@@ -171,10 +168,12 @@ else:
                 print(f"Time for gene: {time_for_gene:.4f}s")
                 time_left = num_genes - len(data_dict) * time_for_gene
                 print(f"Time left:{time_left // 60 // 60:.0f}h {time_left // 60 % 60:.0f}m {time_left % 60:.0f}s")
+                
+                """
                 #save transcripts and their expression levels
                 with open("save.json", 'w') as file:
-                    json.dump(data_dict, file)
-                
+                json.dump(data_dict, file)
+                """
 
             elif "-flowOptimization" in sys.argv:
                 
@@ -189,8 +188,6 @@ else:
                 #print('CostFunctionIndex = ' + str(costFunctionIndex))
                 skipOptimization = False
                 
-                print(geneCounter)
-              
                 # Catch infeasible models or models that are unbounded below
                 try:
                     g_Star, newGraph, flow, flowDict = flowProblem.writeGStar(Graph, costFunctionIndex)
@@ -220,22 +217,32 @@ else:
                     else: 
                         optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'longestPath', flow)
                         optimizedTranscripts.append(optimizedGeneTranscripts)
-                
-                geneCounter = geneCounter + 1
 
-                    # ADD TRANSCRIPTS TO GTF FILE
-                """
-                elif(sys.argv[2] == "-GTF"):
-                    gene_id = 1
-                    transcript_id = 0
-                    for transcript in transcripts:
-                        transcript_id += 1
-                        parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(gene_id),"Transcript"+str(transcript_id))
-                """
 
-        # PRINT RESULTS
-        end = time.time()
-        print("Gesamtanzahl Transkripte: ", no_trans)
-        print('{:5.3f}s'.format(end - start))
-        # file_gtf.close()
+            # ADD TRANSCRIPTS TO GTF FILE
+            data = []
+            for i in range(len(transcripts)):
+                transcript = parse_graph_new.nodepath_to_transcript(Graph, transcripts[i])
+                if("-opt" in sys.argv) and var_dict[str(i)] > 0:
+                    parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),"Transcript"+str(i))
+                    #create list that contains transcripts from all genes and their expression levels. List contains dictionary where key is the gene number (position in file) and values are transcripts and expression level
+                    data.append((transcript, var_dict[str(i)]))
+                elif ("-opt" not in sys.argv):
+                    parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),"Transcript"+str(i))
+                    data.append(transcript)
+                #print(transcript)
+
+            data_dict[geneCounter] = data
+            geneCounter = geneCounter + 1
+
+
+# PRINT RESULTS
+end = time.time()
+print("Number of transcripts: ", no_trans)
+print('{:5.3f}s'.format(end - start))
+file_gtf.close()
+print("Optimization failed for ", failed_transcripts, " gene")
+print(failed_transcripts_ls)
+print(data_dict)
+print(var_dict)
 print(residualFlowList)

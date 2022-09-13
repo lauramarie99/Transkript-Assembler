@@ -1,3 +1,4 @@
+# Example
 from gurobipy import *
 
 # Create empty model
