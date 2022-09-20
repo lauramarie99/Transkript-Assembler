@@ -346,58 +346,45 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow:int):
 
     elif decomposition_option == 'maximumFlow':
 
-        # 1. Perform Backtracking in
-
+        #1.1 MaxFlowDictionary
         while(flow>0):        
-            
-            # 1.1 MaxFlowDictionary
-
-            # Forward 
-            #  maxFlowDict = {}
-            # Initializing
-            # for key in graph.edges.keys():
-            #     maxFlowDict[key] = graph.edges[key]['counts']['c']
-            # # queue = [] # Initialize PriorityQueue
-            # for u in list(graph.adj['0']):
-            #     queue.append(u)
-            # while(len(queue)>0):
-            #     v = queue.pop(0)
-            #     maxPreFlow = max(maxFlowDict[(x,v)] for x in graph.predecessors(v))
-            #     for u in list(graph.adj[v]):
-            #         maxFlowDict[(v,u)] = min(graph.edges[v,u]['counts']['c'], maxPreFlow)
-            #         queue.append(u)
-            #if max(maxFlowDict[(x,'1')] for x in graph.predecessors('1')) ==0:
-
-            if max(graph.edges[x,'1']['counts']['c'] for x in graph.predecessors('1')) ==0:
-                break     
-
-            # 2.1 On the graph itself (only Backtrack)
-              
+            #Forward 
+            maxFlowDict = {}
+            #Initializing
+            for key in graph.edges.keys():
+                maxFlowDict[key] = graph.edges[key]['counts']['c']
+            queue = [] # Initialize PriorityQueue
+            for u in list(graph.adj['0']):
+                queue.append(u)
+            while(len(queue)>0):
+                v = queue.pop(0)
+                maxPreFlow = max(maxFlowDict[(x,v)] for x in graph.predecessors(v))
+                for u in list(graph.adj[v]):
+                    maxFlowDict[(v,u)] = min(maxFlowDict[(v,u)], maxPreFlow)
+                    queue.append(u)
+            if max(maxFlowDict[(x,'1')] for x in graph.predecessors('1')) == 0:
+                break
             # Backtracking
             else:
                 transcript = []
                 transcript.append('1')
                 minMaxFlow = 0
                 for x in graph.predecessors('1'):
-                    if graph.edges[(x,'1')]['counts']['c']>minMaxFlow:
-                    #if maxFlowDict[(x,'1')] > minMaxFlow:
+                    if maxFlowDict[(x,'1')] > minMaxFlow:
                         maxIndex = x
-                        minMaxFlow = graph.edges[(x,'1')]['counts']['c']
-                        #minMaxFlow = maxFlowDict[(x,'1')]
+                        minMaxFlow = maxFlowDict[(x,'1')]
                 transcript.append(str(maxIndex))
                 while(maxIndex!='0'):
                     u = maxIndex
                     maxFlow = 0
                     for x in graph.predecessors(u):
-                        if graph.edges[x,u]['counts']['c']>maxFlow:
-                        #if maxFlowDict[(x,u)] > maxFlow:
-                            maxFlow = graph.edges[x,u]['counts']['c']
-                            #maxFlow = maxFlowDict[(x, u)]
+                        if maxFlowDict[(x,u)] > maxFlow:
+                            maxFlow = maxFlowDict[(x, u)]
                             maxIndex = x
                     transcript.append(str(maxIndex))
-                    minMaxFlow = min(maxFlow, minMaxFlow)
                 transcript.reverse()
-                optimizedTranscripts.append((transcript, minMaxFlow))
+                print(transcript)
+                optimizedTranscripts.append(transcript)
                 
                 # Eliminate edges with minimal flow
                 for i in range(len(transcript)-1):
