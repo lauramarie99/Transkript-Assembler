@@ -18,8 +18,34 @@ start_gene = time.time()
 no_trans = 0
 failed_transcripts = 0
 failed_transcripts_ls = []
-file_gtf = open("transcripts.gtf", "w")
 data_dict = dict()
+percentageCounter = 0
+# Additional Options
+
+# 1. OutputFilename
+if "-outputFilename" in sys.argv:
+    for i in range(len(sys.argv)):
+        if sys.argv[i] == "-outputFilename":
+            gtfFilename = str(sys.argv[i+1])
+            break
+else:    
+    gtfFilename = "transcripts.gtf"
+file_gtf = open(gtfFilename, "w")
+
+# 2. CostIndex (determined once)
+costFunctionIndex = 1 # default value
+if "-costFunction" in sys.argv:
+    for i in range(len(sys.argv)):
+        if sys.argv[i] == "-costFunction":
+            costFunctionIndex = int(sys.argv[i+1])
+            break
+
+# 3. Additional edges
+maxAdditionalEdgeCount = 100 # default value
+if ("-additionalEdges" in sys.argv):
+    for i in range(len(sys.argv)):
+        if sys.argv[i] == "-additionalEdges":
+            maxAdditionalEdgeCount = int(sys.argv[i+1])
 
 # MAIN
 #prints out usage instructions
@@ -45,16 +71,19 @@ if(sys.argv[1] =="-help"):
     print("-- DPLP: (=DynamicProgrammingLongestPath) in every step the total flow will be reduced by the flow of the longest path obtained via dynamic programming (prior establishing the set of paths is not needed for this option)")
     print("-- DPMF: (=DynamicProgrammingMaximumFlow): in every step the total flow will be reduced by the flow of the path with maximumFlow obtained via dynamic programming (prior establishing the set of paths is not needed for this option)")
     print("--> Default Value: TLLP (=TranscriptListLongestPath")
-    print("-costFunctionX: Specify the costFunction used for flow-based optimization with X")
+    print("-costFunctionX: Specify the costFunction used for flow-based optimization with x (e.g. -flowOptimization 0 for f(x) = x, default value is 1)")
     print("--> 0: f(x) = x" )
     print("--> 1: f(x) = x/cov(u,v)")
     print("--> 2: f(x) = x/sqrt(cov(u,v))")
-    print("--> 3: f(x) = x^2 (1st Approximization)")
-    print("--> 4: f(x) = x^2 (2nd Approximization)")
-    print("--> 5: f(x) = x^2/cov(u,v)")
-    print("--> 5: f(x) = x^2/(cov(u,v)*length(u,v))")
-    print("--> Default value is 0")
-
+    print("--> 3: f(x) = x^2 (Approximation of x^2 as ((i+y)*(i+y) - i*i)/y with stepsize y")
+    print("--> 4: f(x) = x^2/cov(u,v) (Approximation of x^2 as ((i+y)*(i+y) - i*i)/y with stepsize y")
+    print("--> 5: f(x) = x^2*length(u,v)/cov(u,v) (Approximation of x^2 as ((i+y)*(i+y) - i*i)/y with stepsize y")
+    print("--> 6: f(x) = x^2 (Exact modelling of x^2 as ((i+y)*(i+y) - i*i)/y with stepsize y=1)")
+    print("--> 7: f(x) = x^2 (Approximation of x^2 as x(x-1)/2)")
+    print("--> 8: f(x) = x^2/cov(u,v) (Approximation of x^2 as x(x-1)/2)")
+    print("- maxAdditionalEdges x: Specifiy with x how many additional edges should be added for modelling quadratic cost functions. Be aware that computation time might increases massively.")
+    print("-outputFilename: Provide a name for the gtf-File that is written with the transcripts with the ending .gtf (Default")
+    print("-jsonFilename: If you want the transcripts of the genes saved in an additionale json file for further usage, provide a filename in which the transcripts with the expressionlevel or flow will be saved.")
 #read in file to estimate calculation time
 else:
     with open(sys.argv[1]) as file:
@@ -177,20 +206,15 @@ else:
 
             elif "-flowOptimization" in sys.argv:
                 
+                graphCopy = deepcopy(Graph)
                 optimizedTranscripts = []
-                costFuntionIndex = 1
-                if "-costFunction" in sys.argv:
-                    for i in range(len(sys.argv)):
-                        if sys.argv[i] == "-costFunction":
-                            costFunctionIndex = int(sys.argv[i+1])
-                            break
                         
                 #print('CostFunctionIndex = ' + str(costFunctionIndex))
                 skipOptimization = False
                 
                 # Catch infeasible models or models that are unbounded below
                 try:
-                    g_Star, newGraph, flow, flowDict = flowProblem.writeGStar(Graph, costFunctionIndex)
+                    g_Star, newGraph, flow = flowProblem.writeGStar(Graph, costFunctionIndex, maxAdditionalEdgeCount)
                     if g_Star == 0:
                         skipOptimization = True    
                 except nx.NetworkXUnfeasible or nx.NetworkXUnbounded:
@@ -217,32 +241,55 @@ else:
                     else: 
                         optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'longestPath', flow)
                         optimizedTranscripts.append(optimizedGeneTranscripts)
+                    
+                if int(geneCounter/num_genes*100)>= percentageCounter:
+                    print(f"{percentageCounter}  % finished")
+                    percentageCounter = percentageCounter+ 10 
 
 
             # ADD TRANSCRIPTS TO GTF FILE
             data = []
-            for i in range(len(transcripts)):
-                transcript = parse_graph_new.nodepath_to_transcript(Graph, transcripts[i])
-                if("-opt" in sys.argv) and var_dict[str(i)] > 0:
-                    parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),"Transcript"+str(i))
+            if ("-flowOptimization" in sys.argv):
+                for i in range(len(optimizedGeneTranscripts)):
+                    transcript = parse_graph_new.nodepath_to_transcript(graphCopy, optimizedGeneTranscripts[i][0])
+                    parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),"Gene"+str(geneCounter)+"Transcript"+str(i), "Flow: "+str(optimizedGeneTranscripts[i][1]))
                     #create list that contains transcripts from all genes and their expression levels. List contains dictionary where key is the gene number (position in file) and values are transcripts and expression level
-                    data.append((transcript, var_dict[str(i)]))
-                elif ("-opt" not in sys.argv):
-                    parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),"Transcript"+str(i))
-                    data.append(transcript)
+                    transcriptData = (transcript, optimizedGeneTranscripts[i][1])
+                    data.append(transcriptData)
+            else:
+                for i in range(len(transcripts)):
+                    transcript = parse_graph_new.nodepath_to_transcript(Graph, transcripts[i])
+                    if("-opt" in sys.argv) and var_dict[str(i)] > 0:
+                        parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),"Transcript"+str(i))
+                        #create list that contains transcripts from all genes and their expression levels. List contains dictionary where key is the gene number (position in file) and values are transcripts and expression level
+                        data.append((transcript, var_dict[str(i)]))
+                    elif ("-opt" not in sys.argv):
+                        parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),"Transcript"+str(i))
+                        data.append(transcript)
                 #print(transcript)
 
             data_dict[geneCounter] = data
             geneCounter = geneCounter + 1
 
-
 # PRINT RESULTS
 end = time.time()
-print("Number of transcripts: ", no_trans)
-print('{:5.3f}s'.format(end - start))
-file_gtf.close()
-print("Optimization failed for ", failed_transcripts, " gene")
-print(failed_transcripts_ls)
-print(data_dict)
-print(var_dict)
-print(residualFlowList)
+# print("Number of transcripts: ", no_trans)
+print(sys.argv)
+print('Time: ' + '{:5.3f}s'.format(end - start))
+# file_gtf.close()
+# print("Optimization failed for ", failed_transcripts, " gene")
+# print(failed_transcripts_ls)
+# # print(data_dict)
+# # print(var_dict)
+# print(residualFlowList)
+# 4. Json-File Name
+if ("-jsonFilename" in sys.argv):
+    for i in range(len(sys.argv)):
+        if sys.argv[i] == "-jsonFilename":
+            jsonFilename = str(sys.argv[i+1])
+    json_object = json.dumps(data_dict)
+    with open(jsonFilename, 'w') as jsonFile:
+        jsonFile.write(json_object)
+        jsonFile.write('\n')
+        jsonFile.write('Time: ' + str(end - start))
+        jsonFile.close()

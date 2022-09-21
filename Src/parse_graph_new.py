@@ -109,10 +109,10 @@ def parse_graph(f, G, Exons):
 # transcript  .. ordered list of indices of visited exons e.g. [0, 2, 3, 5]
 # gene_id  ..  identifier of the current locus potentially containing multiple isoforms
 # transcript_id  ..  identifier of the transcript
-def write_valid_gtf_entry(f, chrom, strand, exons, transcript, geneId, transcriptId):
+def write_valid_gtf_entry(f, chrom, strand, exons, transcript, geneId, transcriptId, expressionLevel):
 
     # write transcript group line
-    f.write(chrom+"\tFortgMethoden\ttranscript\t"+str(exons[transcript[0]].leftPos)+"\t"+str(exons[transcript[-1]].rightPos)+"\t0\t"+strand+'\t.\tgene_id "'+geneId+'"; transcript_id "'+transcriptId+'";\n')
+    f.write(chrom+"\tFortgMethoden\ttranscript\t"+str(exons[transcript[0]].leftPos)+"\t"+str(exons[transcript[-1]].rightPos)+"\t0\t"+strand+'\t.\tgene_id "'+geneId+'"; transcript_id "'+transcriptId+'";ExpressionLevel "'+expressionLevel+'";\n')
 
     # write each exon in order, directly adjacent exons need to be joined
     
