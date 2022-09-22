@@ -244,7 +244,7 @@ else:
                     
                 if int(geneCounter/num_genes*100)>= percentageCounter:
                     print(f"{percentageCounter}  % finished")
-                    percentageCounter = percentageCounter+ 10 
+                    percentageCounter = percentageCounter+ 1 
 
 
             # ADD TRANSCRIPTS TO GTF FILE
@@ -267,7 +267,6 @@ else:
                         parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),"Transcript"+str(i))
                         data.append(transcript)
                 #print(transcript)
-
             data_dict[geneCounter] = data
             geneCounter = geneCounter + 1
 
