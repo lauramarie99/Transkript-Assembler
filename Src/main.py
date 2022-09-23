@@ -12,13 +12,18 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 import optimize
 import os
-import csv
+import statistics
 
 # VARIABLES
 start = time.time()
 start_gene = time.time()
 no_trans = 0
 no_optimizedTranscripts = 0
+numberGenesZeroTranscripts = 0
+numberSingleExonTranscriptsBeforeOptimization = 0
+numberSingleExonTranscriptsAfterOptimization = 0
+optimizedTranscriptSize = []
+unoptimizedTranscriptSize = []
 failed_transcripts = 0
 failed_transcripts_ls = []
 data_dict = dict()
@@ -60,6 +65,64 @@ else:
 
 file_gtf = open(gtfFilename, "w")
 
+# 5. Lambda and mu
+if ('-opt' not in sys.argv):
+    lambda1=None
+    mu = None
+else:
+    if "-lambda" in sys.argv:
+        for i in range(len(sys.argv)):
+            if sys.argv[i] == "-lambda":
+                lambda1 = str(sys.argv[i+1])
+                break
+    else: 
+        if("-norm0" in sys.argv and "-constr0" in sys.argv):
+            lambda1=0.1
+        elif ("-norm0" in sys.argv and "-constr1" in sys.argv):
+            lambda1 = None
+        elif ("-norm1" in sys.argv and "-constr0" in sys.argv):
+            lambda1 = 10
+        elif ("-norm1" in sys.argv and "-constr1" in sys.argv):
+            lambda1=None
+        elif ("-norm2" in sys.argv and "-constr0" in sys.argv):
+            lambda1 = 5
+        elif ("-norm2" in sys.argv and "-constr1" in sys.argv):
+            lambda1 = None
+        elif ("-norm0" in sys.argv):
+            lambda1 = 0
+        elif ("-norm1" in sys.argv):
+            lambda1 = 0
+        elif ("-norm2" in sys.argv):
+            lambda1 = None
+        else:
+            lambda1 = None        
+
+    if "-mu" in sys.argv:
+        for i in range(len(sys.argv)):
+            if sys.argv[i] == "-mu":
+                mu = str(sys.argv[i+1])
+                break
+    else:
+        if("-norm0" in sys.argv and "-constr0" in sys.argv):
+            mu = None
+        elif ("-norm0" in sys.argv and "-constr1" in sys.argv):
+            mu = 0.05
+        elif ("-norm1" in sys.argv and "-constr0" in sys.argv):
+            mu = None
+        elif ("-norm1" in sys.argv and "-constr1" in sys.argv):
+            mu = 5
+        elif ("-norm2" in sys.argv and "-constr0" in sys.argv):
+            mu = None
+        elif ("-norm2" in sys.argv and "-constr1" in sys.argv):
+            mu = 2.5
+        elif ("-norm0" in sys.argv):
+            mu = None
+        elif ("-norm1" in sys.argv):
+            mu = None
+        elif ("-norm2" in sys.argv):
+            mu = None
+        else:
+            mu = None
 
 # MAIN
 #prints out usage instructions
@@ -74,6 +137,8 @@ if(sys.argv[1] =="-help"):
     print("-opt for optimization function and to gain expression levels")
     print("--> requires prior specification of enumeration type")
     print("--> specification of norm and sparsity constraint")
+    print("-lambda: specify penality size for sparsity constrain 0")
+    print("-mu: specify the Maximum number of non-zero transcripts for sparsity contrain 1")
     print("--> example: main.py Test.graph -paired -opt -norm1 -constr0")
     print("--> results are stored in same folder as save.jsn")
     print("-completegraph: combine with other arguments to use the full graph (cleaned graph is used otherwise)")
@@ -176,21 +241,21 @@ else:
             # OPTIMIZATION
             if("-opt" in sys.argv):
                 if("-norm0" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L0", sparsity_constr="L0", factor=0.1)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L0", sparsity_constr="L0", factor=lambda1)
                 elif ("-norm0" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L0", "L1", 0.05)
+                    var_dict = optimize.model(Graph, transcripts, "L0", "L1", mu)
                 elif ("-norm1" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L1", "L0", 10)
+                    var_dict = optimize.model(Graph, transcripts, "L1", "L0", lambda1)
                 elif ("-norm1" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L1", "L1", 5)
+                    var_dict = optimize.model(Graph, transcripts, "L1", "L1", mu)
                 elif ("-norm2" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L2", "L0", 5)
+                    var_dict = optimize.model(Graph, transcripts, "L2", "L0", lambda1)
                 elif ("-norm2" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L2", "L1", 2.5)
+                    var_dict = optimize.model(Graph, transcripts, "L2", "L1", mu)
                 elif ("-norm0" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L0", None, 0)
+                    var_dict = optimize.model(Graph, transcripts, "L0", None, lambda1)
                 elif ("-norm1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L1", None, 0)
+                    var_dict = optimize.model(Graph, transcripts, "L1", None, lambda1)
                 elif ("-norm2" in sys.argv):
                     var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L2", sparsity_constr=None, factor=0)
                 else:
@@ -257,17 +322,22 @@ else:
                         optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'longestPath', flow)
                         optimizedTranscripts.append(optimizedGeneTranscripts)
                     
-                if int(geneCounter/num_genes*100)>= percentageCounter:
-                    print(f"{percentageCounter}  % finished")
-                    percentageCounter = percentageCounter+ 1 
+                # if int(geneCounter/num_genes*100)>= percentageCounter:
+                #     print(f"{percentageCounter}  % finished")
+                #     percentageCounter = percentageCounter+ 1 
 
 
             # ADD TRANSCRIPTS TO GTF FILE
             data = []
             if ("-flowOptimization" in sys.argv):
+                if (len(optimizedGeneTranscripts)) == 0:
+                    failed_transcripts += 1 
                 no_optimizedTranscripts = no_optimizedTranscripts+len(optimizedGeneTranscripts)
                 for i in range(len(optimizedGeneTranscripts)):
                     transcript = parse_graph_new.nodepath_to_transcript(graphCopy, optimizedGeneTranscripts[i][0])
+                    optimizedTranscriptSize.append(len(transcript))
+                    if len(transcript) ==1:
+                        numberSingleExonTranscriptsAfterOptimization +=1
                     parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),str(geneCounter)+"."+str(i+1), "Flow: "+str(optimizedGeneTranscripts[i][1]))
                     #create list that contains transcripts from all genes and their expression levels. List contains dictionary where key is the gene number (position in file) and values are transcripts and expression level
                     transcriptData = (transcript, optimizedGeneTranscripts[i][1])
@@ -277,11 +347,17 @@ else:
                     transcript = parse_graph_new.nodepath_to_transcript(Graph, transcripts[i])
                     if("-opt" in sys.argv) and var_dict[str(i)] > 0:
                         no_optimizedTranscripts = no_optimizedTranscripts+1
-                        parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),"Transcript"+str(i))
+                        optimizedTranscriptSize.append(len(transcript))
+                        if len(transcript) ==1:
+                            numberSingleExonTranscriptsAfterOptimization +=1
+                        parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),str(geneCounter)+"."+str(i+1), 'Expression Level' +str(var_dict[str(i)]))
                         #create list that contains transcripts from all genes and their expression levels. List contains dictionary where key is the gene number (position in file) and values are transcripts and expression level
                         data.append((transcript, var_dict[str(i)]))
                     elif ("-opt" not in sys.argv):
-                        parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),"Transcript"+str(i))
+                        unoptimizedTranscriptSize.append(len(transcript))
+                        if len(transcript)==1:
+                            numberSingleExonTranscriptsBeforeOptimization +=1
+                        parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),str(geneCounter)+"."+str(i+1), 'Expressionlevel: Not determined')
                         data.append(transcript)
                 #print(transcript)
             data_dict[geneCounter] = data
@@ -299,7 +375,7 @@ end = time.time()
 # print(failed_transcripts_ls)
 # # print(data_dict)
 # # print(var_dict)
-print(residualFlowList)
+#print(residualFlowList)
 
 # 4. Json-File Name
 if ("-jsonFilename" in sys.argv):
@@ -313,49 +389,118 @@ if ("-jsonFilename" in sys.argv):
         jsonFile.write('Time: ' + str(end - start))
         jsonFile.close()
 
-# Write Dictionary with metaData
-metadata = {}
+# Collect Data for Analysis
+
 # Order
 # 0.  InputData (specify name)
 # 1.  Graph (cleaned or full)
-# 2.  -full (0 = no, 1 = yes)
-# 3.  -multi (0 = no, 1 = yes)
-# 4.  -paired (0 = no, 1 = yes)
-# 5.  -opt (0 = no, 1 = yes)
-# 6.  -norm (0 = L0, 1 = L1, 2 = L2, -1 = none)
-# 7.  -constraint (0 = sparsity constraint 0, 1 = sparsity constraint 1, -1 = none)
-# 8.  -flowOptimization (0 = no, 1 = yes)
-# 9.  -costFunction (0: f(x) = x, 1: f(x) = x/cov(u,v), 2: f(x) = x/sqrt{cov(u,v)}, 3: f(x) = x^2, 4: f(x) = x^2/cov(u,v), 5: f(x) = x^2*length/cov(u,v), -1: none)
-# 10. -maxAdditionalEdges (x = number of additionalEdges for quadraticCostFunction, -1: none)
-# 11. Mode of FlowDecomposition (TLLP, TLMF, DPLP, DPMF)
-# 12. -outputFilename (outputFilename, default: transcripts.gtf)
-# 13. -resultsFilename (resultsFilename, default: results.csv)
-# 14. -jsonFilename (name of jsonFilename, -1: none)
-# 15. Time
-# 16. Number of transcripts determined by pathEnumeration
-# 17. Number of transcripts determined by optimization (-opt or flowOptimization)
-# 18. True positives
-# 19. False positives
-# 20. False negatives
+# 2.  -full (1 = yes, 0=None)
+# 3.  -multi (1 = yes, 0=None)
+# 4.  -paired (1 = yes, 0 = None)
+# 5   -paired2 (1=yes, else None)
+# 6.  -opt (0 = no, 1 = yes)
+# 7.  -norm (0 = L0, 1 = L1, 2 = L2, -1 = none)
+# 8.  -constraint (0 = sparsity constraint 0, 1 = sparsity constraint 1, -1 = none)
+# 9.  Lambda
+# 10.  Mu
+# 11.  -flowOptimization (0 = no, 1 = yes)
+# 12.  -costFunction (0: f(x) = x, 1: f(x) = x/cov(u,v), 2: f(x) = x/sqrt{cov(u,v)}, 3: f(x) = x^2, 4: f(x) = x^2/cov(u,v), 5: f(x) = x^2*length/cov(u,v), -1: none)
+# 13. -maxAdditionalEdges (x = number of additionalEdges for quadraticCostFunction, -1: none)
+# 14. Mode of FlowDecomposition (TLLP, TLMF, DPLP, DPMF)
+# 15. -outputFilename (outputFilename, default: transcripts.gtf)
+# 16. -resultsFilename (resultsFilename, default: results.csv)
+# 17. -jsonFilename (name of jsonFilename, -1: none)
+# 18. Time
+# 19. Number of transcripts determined by pathEnumeration
+# 20. Number of transcripts determined by optimization (-opt or flowOptimization)
+# 21. Number of genes with 0 Transcripts with Optimization
+# 22. Average transcript size without Optimization
+# 23. Standard deviation of transcriptSize without Optimization
+# 24. Average transcript size with Optimization
+# 25. Standard deviation of transcriptSize without Optimization
+# 26. Number of single Exon transcripts before optimization
+# 27. Number of single Exon transcripts after optimization
+# 28. True positives
+# 29. False positives
+# 30. Total positives
+# 31. False negatives
+# 32. Total Transcripts of ReferenceGTF
+# 33. Sensitivity on IntronChainLevel
+# 34. Precision on IntronChainLevel
+# 35. Fuzzy Sensitivity on IntronChainLevel 
+# 36. Fuzzy Precision on IntronChainLevel
+
+# Write Dictionary with metaData
+metaDataHeader = {}
+
+metaDataHeader[0] = 'Data'
+metaDataHeader[1] = 'Graph'
+metaDataHeader[2] = 'full'
+metaDataHeader[3] = 'multi'
+metaDataHeader[4] = 'paired1'
+metaDataHeader[5] = 'paired1'
+metaDataHeader[6] = 'opt'
+metaDataHeader[7] = 'Norm'
+metaDataHeader[8] = 'Sparsity Constraint'
+metaDataHeader[9] = 'Lambda'
+metaDataHeader[10] = 'Mu'
+metaDataHeader[11] = 'flowOptimization'
+metaDataHeader[12] = 'CostFunctionIndex'
+metaDataHeader[13] = 'maxAdditionalEdgeCount'
+metaDataHeader[14] = 'Mode of Backtrack'
+metaDataHeader[15] = 'Name of gtfFile'
+metaDataHeader[16] = 'Name of csv-Resultfile'
+metaDataHeader[17] = 'Name of jsonFile'
+metaDataHeader[18] = 'Time'
+metaDataHeader[19] = 'Number of Transcripts without Optimization'
+metaDataHeader[20] = 'Number of Transcripts with Optimization'
+metaDataHeader[21] = 'Number of genes with 0 Transcripts with Optimization'
+metaDataHeader[22] = 'Average transcript size without Optimization'
+metaDataHeader[23] = 'Standard deviation of transcriptSize without Optimization'
+metaDataHeader[24] = 'Average transcript size with Optimization'
+metaDataHeader[25] = 'Standard deviation of transcriptSize with Optimization'
+metaDataHeader[26] = 'Number of single Exon transcripts without Optimization'
+metaDataHeader[27] = 'Number of single Exon transcripts with Optimization'
+metaDataHeader[28] = 'True positives'
+metaDataHeader[29] = 'False positives'
+metaDataHeader[30] = 'Total positives'
+metaDataHeader[31] = 'False negatives'
+metaDataHeader[32] = 'Total Transcripts of ReferenceGTF'
+metaDataHeader[33] = 'Sensitivity on IntronChainLevel'
+metaDataHeader[34] = 'Precision on IntronChainLevel'
+metaDataHeader[35] = 'Fuzzy Sensitivity on IntronChainLevel'
+metaDataHeader[36] = 'Fuzzy Precision on IntronChainLevel'
+
+metadata = {}
 
 metadata[0] = sys.argv[1]
 metadata[1] = 'full' if '-fullgraph' in sys.argv else 'cleaned'
-metadata[2] = 1 if '-full' in sys.argv else 0
-metadata[3] = 1 if '-multi' in sys.argv else 0
-metadata[4] = 1 if '-paired' in sys.argv else 0
-metadata[5] = 1 if '-opt' in sys.argv else 0
-metadata[6] = 0 if '-norm0' in sys.argv else 1 if '-norm1' in sys.argv else 2 if '-norm2' in sys.argv else 1 if '-opt' in sys.argv else -1 
-metadata[7] = 0 if '-constr0' in sys.argv else 1 if '-constr1' in sys.argv else -1
-metadata[8] = 1 if '-flowOptimization' in sys.argv else 0 
-metadata[9] = costFunctionIndex if '-flowOptimization' in sys.argv else -1
-metadata[10] = maxAdditionalEdgeCount if '-flowOptimization' in sys.argv and costFunctionIndex>2 else -1
-metadata[11] = 'TLLP' if '-TLLP' and '-flowOptimization' in sys.argv else 'TLMF' if '-TLMF' and '-flowOptimization' in sys.argv else 'DPLP' if '-DPLP' and '-flowOptimization' in sys.argv else 'DPMF' if '-DPMF' and '-flowOptimization' in sys.argv in sys.argv else -1
-metadata[12] = gtfFilename
-metadata[13] = resultsFilename
-metadata[14] = jsonFilename if 'jsonFilename' in sys.argv else -1
-metadata[15] = '{:5.3f}s'.format(end - start)
-metadata[16] = no_trans
-metadata[17] = no_optimizedTranscripts
+metadata[2] = 1 if '-full' in sys.argv else None
+metadata[3] = 1 if '-multi' in sys.argv else None
+metadata[4] = 1 if '-paired' in sys.argv else None
+metadata[5] = 1 if '-paired2' in sys.argv else None
+metadata[6] = 1 if '-opt' in sys.argv else 0
+metadata[7] = 0 if '-norm0' in sys.argv else 1 if '-norm1' in sys.argv else 2 if '-norm2' in sys.argv else 1 if '-opt' in sys.argv else None
+metadata[8] = 0 if '-constr0' in sys.argv else 1 if '-constr1' in sys.argv else None
+metadata[9] = lambda1
+metadata[10] = mu
+metadata[11] = 1 if '-flowOptimization' in sys.argv else 0 
+metadata[12] = costFunctionIndex if '-flowOptimization' in sys.argv else None
+metadata[13] = maxAdditionalEdgeCount if '-flowOptimization' in sys.argv and costFunctionIndex>2 else None
+metadata[14] = 'TLLP' if ('-TLLP' in sys.argv and '-flowOptimization' in sys.argv) else 'TLMF' if ('-TLMF' in sys.argv and '-flowOptimization' in sys.argv) else 'DPLP' if ('-DPLP' in sys.argv and '-flowOptimization' in sys.argv) else 'DPMF' if ('-DPMF' in sys.argv and '-flowOptimization' in sys.argv) else 'TLLP' if ('-flowOptimization' in sys.argv) else None
+metadata[15] = gtfFilename
+metadata[16] = resultsFilename
+metadata[17] = jsonFilename if 'jsonFilename' in sys.argv else None
+metadata[18] = '{:5.3f}s'.format(end - start)
+metadata[19] = no_trans
+metadata[20] = no_optimizedTranscripts
+metadata[21] = failed_transcripts
+metadata[22] = statistics.mean(unoptimizedTranscriptSize) if len(unoptimizedTranscriptSize)>0 else None
+metadata[23] = statistics.stdev(unoptimizedTranscriptSize) if len(unoptimizedTranscriptSize)>0 else None
+metadata[24] = statistics.mean(optimizedTranscriptSize) if len(optimizedTranscriptSize)>0 else None
+metadata[25] = statistics.stdev(optimizedTranscriptSize) if len(optimizedTranscriptSize)>0 else None
+metadata[26] = numberSingleExonTranscriptsBeforeOptimization
+metadata[27] = numberSingleExonTranscriptsAfterOptimization
 
 #Write MetaData to file
 metadataFile = open(resultsFilename, 'a')
