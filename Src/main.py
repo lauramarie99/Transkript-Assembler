@@ -17,17 +17,22 @@ import statistics
 # VARIABLES
 start = time.time()
 start_gene = time.time()
-no_trans = 0
-no_optimizedTranscripts = 0
+no_transcripts = []
+no_optimizedTranscripts = []
 numberGenesZeroTranscripts = 0
 numberSingleExonTranscriptsBeforeOptimization = 0
 numberSingleExonTranscriptsAfterOptimization = 0
 optimizedTranscriptSize = []
 unoptimizedTranscriptSize = []
+recursionExceededCounter = 0
 failed_transcripts = 0
 failed_transcripts_ls = []
 data_dict = dict()
 percentageCounter = 0
+transcriptExceededCounter = 0
+maxRecursionDepth = 0
+pairedBinExceeded = 0
+no_Exons = []
 # Additional Options
 
 # 1. OutputFilename
@@ -65,7 +70,28 @@ else:
 
 file_gtf = open(gtfFilename, "w")
 
-# 5. Lambda and mu
+# # 5. MaximumRecursionDepth
+# if "-maxRecursion" in sys.argv:
+#     for i in range(len(sys.argv)):
+#         if sys.argv[i] == "-maxRecursion":
+#             maxRecursionDepth = str(sys.argv[i+1])
+#             break
+# else:
+#     maxRecursionDepth = 1000
+# #Set maximum recursion depth
+# sys.setrecursionlimit(maxRecursionDepth)
+
+# 5. MaxTranscripts
+
+if "-maxTranscripts" in sys.argv:
+    for i in range(len(sys.argv)):
+        if sys.argv[i] == "-maxTranscripts":
+            maxExons = str(sys.argv[i+1])
+            break
+else:
+    maxTranscripts=int(1e4)
+
+# 8. Lambda and mu
 if ('-opt' not in sys.argv):
     lambda1=None
     mu = None
@@ -134,6 +160,8 @@ if(sys.argv[1] =="-help"):
     print("-multi for multi bin enumeration")
     print("-paired for paired bin enumeration")
     print("-paired2 for second paired bin enumeration function")
+    print("-maxTranscripts: Specify cut-off value, how many Transcripts/Gene (default: 100000)")
+    print("-maxRecursion: Specify maximum recursion Depth (Default: 1000)")
     print("-opt for optimization function and to gain expression levels")
     print("--> requires prior specification of enumeration type")
     print("--> specification of norm and sparsity constraint")
@@ -177,6 +205,7 @@ else:
         f.readline()  # skip ---- seperator line
         geneCounter = 0
         residualFlowList = []
+        number_optimizedTranscripts = 0
 
         while not fileEndReached:
             # READ META AND BIN DATA FROM FILE
@@ -185,7 +214,7 @@ else:
             Bins = parse_graph_new.parse_bins(f)
             PairedBins = parse_graph_new.parse_pairs(f)
             PairedBins_copy = deepcopy(PairedBins)
-
+            no_Exons.append(len(Exons))
             # BUILD GRAPH
             G_full = nx.DiGraph()
             fileEndReached, skip = parse_graph_new.parse_graph(f, G_full, Exons)
@@ -205,41 +234,86 @@ else:
                 Graph = G_full
             else:
                 Graph = G_clean
-
+            
+            # Set maxRecursionDepth Max
+            maxRecursionDepth = max(maxRecursionDepth, len(Graph.edges()))
+            sys.setrecursionlimit(max(1000,len(Graph.edges())))
+            
             # FULL PATH ENUMERATION
             if ("-full" in sys.argv):
-
-                transcripts = path_enumeration.enumeration(Graph,[],"0",["0"],"1",False)
-                no_trans = no_trans + len(transcripts)
+                #Skip this gene if it contains too many transcripts
+                try:
+                    transcripts= path_enumeration.enumeration(Graph,[],"0",["0"],"1",False, maxTranscripts)
+                except RecursionError as re:
+                    recursionExceededCounter +=1
+                    print(str(geneCounter) + ' exceeded maxRecursionNumber.')
+                    geneCounter +=1
+                    continue
 
             # MULTI BIN ENUMERATION
-            if ("-multi" in sys.argv):
-
+            elif ("-multi" in sys.argv):
                 multi_bins = path_enumeration.get_multibins(Bins)
-                transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],multi_bins,"1",False)
-                no_trans = no_trans + len(transcripts)
+                invalidPathCounter = []
+                invalidPathCounter.append(0)
+                try:
+                    transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],multi_bins,"1",False, maxTranscripts, invalidPathCounter)
+                except RecursionError as re:
+                    recursionExceededCounter +=1
+                    print(str(geneCounter) + ' exceeded maxRecursionNumber with.')
+                    geneCounter +=1
+                    continue
 
             # PAIRED BIN ENUMERATION 1
             elif("-paired" in sys.argv):
-
+                invalidPathCounter = []
+                invalidPathCounter.append(0)
                 multi_bins = path_enumeration.get_multibins(Bins)
-                paired_bins = pairedbin_enumeration.get_pairedbins(Graph,PairedBins_copy,multi_bins)
-                transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],paired_bins+multi_bins,"1",False)
-                no_trans = no_trans + len(transcripts)
-
+                paired_bins = pairedbin_enumeration.get_pairedbins(Graph,PairedBins_copy,multi_bins, maxTranscripts)
+                if len(paired_bins) > 10000:
+                    print('Gene ' + str(geneCounter) + ' exceeded max paired_bins with ' + str(len(paired_bins)))
+                    pairedBinExceeded +=1
+                    geneCounter +=1
+                    continue
+                try:
+                    transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],paired_bins+multi_bins,"1",False, maxTranscripts, invalidPathCounter)
+                except RecursionError as re:
+                    recursionExceededCounter +=1
+                    print(str(geneCounter) + ' exceeded maxRecursionNumber.')
+                    geneCounter +=1
+                    continue
 
             # PAIRED BIN ENUMERATION 2
             elif("-paired2" in sys.argv):
-
                 pairedbins_grouped = pairedbin_enumeration.group_pairs(PairedBins_copy)
                 multi_bins = path_enumeration.get_multibins(Bins)
-                transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],multi_bins,"1",False)
+                invalidPathCounter = []
+                invalidPathCounter.append(0)
+                try:
+                    transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],multi_bins,"1",False, maxTranscripts, invalidPathCounter)
+                except RecursionError as re:
+                    recursionExceededCounter +=1
+                    print(str(geneCounter) + ' exceeded maxRecursionNumber.')
+                    geneCounter +=1
+                    continue
                 transcripts_copy = deepcopy(transcripts)
                 filtered_transcripts = pairedbin_enumeration.filter_transcripts(transcripts_copy,pairedbins_grouped)
-                no_trans = no_trans + len(filtered_transcripts)
+            
+            # Skipp this Gene if number of transcripts exceed maxTranscripts
+            if len(transcripts)>maxTranscripts:
+                transcriptExceededCounter +=1
+                print(str(geneCounter) + ' exceeds ' + str(maxTranscripts) + ' transcripts.')
+                geneCounter+=1
+                continue                
 
-            # OPTIMIZATION
+            # Save Number of transcripts for this gene
+            no_transcripts.append(len(transcripts))
+
+            # WP2 OPTIMIZATION
             if("-opt" in sys.argv):
+                # Get transcripts
+                if len(transcripts)==0:
+                # Use NetworkX build-in method to obtain all possible paths
+                    transcripts = list(nx.all_simple_paths(Graph, '0', '1'))
                 if("-norm0" in sys.argv and "-constr0" in sys.argv):
                     var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L0", sparsity_constr="L0", factor=lambda1)
                 elif ("-norm0" in sys.argv and "-constr1" in sys.argv):
@@ -286,6 +360,12 @@ else:
 
             elif "-flowOptimization" in sys.argv:
                 
+                # Get transcripts
+                if len(transcripts)==0:
+                # Use NetworkX build-in method to obtain all possible paths
+                    transcripts = list(nx.all_simple_paths(Graph, '0', '1'))
+                transcriptsCopy = deepcopy(transcripts)
+
                 graphCopy = deepcopy(Graph)
                 optimizedTranscripts = []
                         
@@ -303,11 +383,12 @@ else:
                 
                 # Execute specified option
                 if not skipOptimization:
+                    # Get transcripts
                     if "-TLLP" in sys.argv:
-                        optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'longestPath', flow)
+                        optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcriptsCopy, 'longestPath', flow)
                         optimizedTranscripts.append(optimizedGeneTranscripts)
                     elif "-TLMF" in sys.argv:
-                        optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'maximumFlow', flow)
+                        optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcriptsCopy, 'maximumFlow', flow)
                         optimizedTranscripts.append(optimizedGeneTranscripts)
                     elif "-DPLP" in sys.argv:
                         optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionDP(newGraph, 'longestPath', flow)
@@ -322,31 +403,42 @@ else:
                         optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'longestPath', flow)
                         optimizedTranscripts.append(optimizedGeneTranscripts)
                     
-                # if int(geneCounter/num_genes*100)>= percentageCounter:
-                #     print(f"{percentageCounter}  % finished")
-                #     percentageCounter = percentageCounter+ 1 
-
+            if int(geneCounter/num_genes*100)>= percentageCounter:
+                print(f"{percentageCounter}  % finished")
+                percentageCounter = percentageCounter+20
 
             # ADD TRANSCRIPTS TO GTF FILE
             data = []
             if ("-flowOptimization" in sys.argv):
+                # Add number to optimized transcripts
                 if (len(optimizedGeneTranscripts)) == 0:
                     failed_transcripts += 1 
-                no_optimizedTranscripts = no_optimizedTranscripts+len(optimizedGeneTranscripts)
+                # Save number of optimized transcripts for this Gene if -flowOptimization is used
+                no_optimizedTranscripts.append(len(optimizedGeneTranscripts))
                 for i in range(len(optimizedGeneTranscripts)):
+                    # Write path to transcript
                     transcript = parse_graph_new.nodepath_to_transcript(graphCopy, optimizedGeneTranscripts[i][0])
+                    # Save length of optimized transcript
                     optimizedTranscriptSize.append(len(transcript))
+                    # Check if transcript is a single Exon transcript
                     if len(transcript) ==1:
                         numberSingleExonTranscriptsAfterOptimization +=1
+                    # Write GTF-Entry for this transcript
                     parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),str(geneCounter)+"."+str(i+1), "Flow: "+str(optimizedGeneTranscripts[i][1]))
-                    #create list that contains transcripts from all genes and their expression levels. List contains dictionary where key is the gene number (position in file) and values are transcripts and expression level
+                    #Add transcript and flow as a tuple to data (list)
                     transcriptData = (transcript, optimizedGeneTranscripts[i][1])
                     data.append(transcriptData)
+                # Write Data for not-optimized Transcripts
+                for i in range(len(transcripts)):
+                    transcript = parse_graph_new.nodepath_to_transcript(graphCopy, transcripts[i])
+                    unoptimizedTranscriptSize.append(len(transcript))
+                    if len(transcript)==1:
+                        numberSingleExonTranscriptsBeforeOptimization +=1
             else:
                 for i in range(len(transcripts)):
                     transcript = parse_graph_new.nodepath_to_transcript(Graph, transcripts[i])
                     if("-opt" in sys.argv) and var_dict[str(i)] > 0:
-                        no_optimizedTranscripts = no_optimizedTranscripts+1
+                        number_optimizedTranscripts = number_optimizedTranscripts+1
                         optimizedTranscriptSize.append(len(transcript))
                         if len(transcript) ==1:
                             numberSingleExonTranscriptsAfterOptimization +=1
@@ -359,25 +451,17 @@ else:
                             numberSingleExonTranscriptsBeforeOptimization +=1
                         parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),str(geneCounter)+"."+str(i+1), 'Expressionlevel: Not determined')
                         data.append(transcript)
-                #print(transcript)
+                # Save number of optimized transcripts for this Gene if -opt is used
+                no_optimizedTranscripts.append(number_optimizedTranscripts)
+            # Write entry for Gene with list of transcripts and expression levels/flow
             data_dict[geneCounter] = data
             geneCounter = geneCounter + 1
-
+            
 
 # PRINT RESULTS
 end = time.time()
-# print("Number of transcripts: ", no_trans)
 
-#print('Time: ' + '{:5.3f}s'.format(end - start))
-
-# file_gtf.close()
-# print("Optimization failed for ", failed_transcripts, " gene")
-# print(failed_transcripts_ls)
-# # print(data_dict)
-# # print(var_dict)
-#print(residualFlowList)
-
-# 4. Json-File Name
+# Write Json-File Name
 if ("-jsonFilename" in sys.argv):
     for i in range(len(sys.argv)):
         if sys.argv[i] == "-jsonFilename":
@@ -394,41 +478,52 @@ if ("-jsonFilename" in sys.argv):
 # Order
 # 0.  InputData (specify name)
 # 1.  Graph (cleaned or full)
-# 2.  -full (1 = yes, 0=None)
-# 3.  -multi (1 = yes, 0=None)
-# 4.  -paired (1 = yes, 0 = None)
-# 5   -paired2 (1=yes, else None)
-# 6.  -opt (0 = no, 1 = yes)
-# 7.  -norm (0 = L0, 1 = L1, 2 = L2, -1 = none)
-# 8.  -constraint (0 = sparsity constraint 0, 1 = sparsity constraint 1, -1 = none)
-# 9.  Lambda
-# 10.  Mu
-# 11.  -flowOptimization (0 = no, 1 = yes)
-# 12.  -costFunction (0: f(x) = x, 1: f(x) = x/cov(u,v), 2: f(x) = x/sqrt{cov(u,v)}, 3: f(x) = x^2, 4: f(x) = x^2/cov(u,v), 5: f(x) = x^2*length/cov(u,v), -1: none)
-# 13. -maxAdditionalEdges (x = number of additionalEdges for quadraticCostFunction, -1: none)
-# 14. Mode of FlowDecomposition (TLLP, TLMF, DPLP, DPMF)
-# 15. -outputFilename (outputFilename, default: transcripts.gtf)
-# 16. -resultsFilename (resultsFilename, default: results.csv)
-# 17. -jsonFilename (name of jsonFilename, -1: none)
-# 18. Time
-# 19. Number of transcripts determined by pathEnumeration
-# 20. Number of transcripts determined by optimization (-opt or flowOptimization)
-# 21. Number of genes with 0 Transcripts with Optimization
-# 22. Average transcript size without Optimization
-# 23. Standard deviation of transcriptSize without Optimization
-# 24. Average transcript size with Optimization
-# 25. Standard deviation of transcriptSize without Optimization
-# 26. Number of single Exon transcripts before optimization
-# 27. Number of single Exon transcripts after optimization
-# 28. True positives
-# 29. False positives
-# 30. Total positives
-# 31. False negatives
-# 32. Total Transcripts of ReferenceGTF
-# 33. Sensitivity on IntronChainLevel
-# 34. Precision on IntronChainLevel
-# 35. Fuzzy Sensitivity on IntronChainLevel 
-# 36. Fuzzy Precision on IntronChainLevel
+# 2.  -full (1 = yes, 0=no)
+# 3.  -multi (1 = yes, 0=no)
+# 4.  -paired (1 = yes, 0no)
+# 5   -paired2 (1=yes, 0=np)
+# 6.  -maxExons 
+# 7.  -maxTranscripts
+# 8.  -opt (0 = no, 1 = yes)
+# 9.  -norm (0 = L0, 1 = L1, 2 = L2, -1 = none)
+# 10.  -constraint (0 = sparsity constraint 0, 1 = sparsity constraint 1, -1 = none)
+# 11.  Lambda
+# 12.  Mu
+# 13.  -flowOptimization (0 = no, 1 = yes)
+# 14.  -costFunction (0: f(x) = x, 1: f(x) = x/cov(u,v), 2: f(x) = x/sqrt{cov(u,v)}, 3: f(x) = x^2, 4: f(x) = x^2/cov(u,v), 5: f(x) = x^2*length/cov(u,v), -1: none)
+# 15. -maxAdditionalEdges (x = number of additionalEdges for quadraticCostFunction, -1: none)
+# 16. Mode of FlowDecomposition (TLLP, TLMF, DPLP, DPMF)
+# 17. -outputFilename (outputFilename, default: transcripts.gtf)
+# 18. -resultsFilename (resultsFilename, default: results.csv)
+# 19. -jsonFilename (name of jsonFilename, -1: none)
+# 20. Time
+# 21. Number of transcripts determined by pathEnumeration
+# 22. Number of transcripts determined by optimization (-opt or flowOptimization)
+# 23. Number of genes with 0 Transcripts with Optimization
+
+# 24. Average number of transcripts/gene size without Optimization
+# 25. Standard deviation of transcripts/gene without Optimization
+# 26. Average number of transcripts/gene size with Optimization
+# 27. Standard deviation of transcripts/gene without Optimization
+
+# 28. Average transcript size without Optimization
+# 29. Standard deviation of transcriptSize without Optimization
+# 30. Average transcript size with Optimization
+# 31. Standard deviation of transcriptSize without Optimization
+
+# 32. Number of single Exon transcripts before optimization
+# 33. Number of single Exon transcripts after optimization
+# 34. Number of total Genes
+# 35. Number of skipped Genes
+# 36. True positives
+# 37. False positives
+# 38. Total positives
+# 40. False negatives
+# 41. Total Transcripts of ReferenceGTF
+# 42. Sensitivity on IntronChainLevel
+# 43. Precision on IntronChainLevel
+# 44. Fuzzy Sensitivity on IntronChainLevel 
+# 45. Fuzzy Precision on IntronChainLevel
 
 # Write Dictionary with metaData
 metaDataHeader = {}
@@ -438,69 +533,103 @@ metaDataHeader[1] = 'Graph'
 metaDataHeader[2] = 'full'
 metaDataHeader[3] = 'multi'
 metaDataHeader[4] = 'paired1'
-metaDataHeader[5] = 'paired1'
-metaDataHeader[6] = 'opt'
-metaDataHeader[7] = 'Norm'
-metaDataHeader[8] = 'Sparsity Constraint'
-metaDataHeader[9] = 'Lambda'
-metaDataHeader[10] = 'Mu'
-metaDataHeader[11] = 'flowOptimization'
-metaDataHeader[12] = 'CostFunctionIndex'
-metaDataHeader[13] = 'maxAdditionalEdgeCount'
-metaDataHeader[14] = 'Mode of Backtrack'
-metaDataHeader[15] = 'Name of gtfFile'
-metaDataHeader[16] = 'Name of csv-Resultfile'
-metaDataHeader[17] = 'Name of jsonFile'
-metaDataHeader[18] = 'Time'
-metaDataHeader[19] = 'Number of Transcripts without Optimization'
-metaDataHeader[20] = 'Number of Transcripts with Optimization'
-metaDataHeader[21] = 'Number of genes with 0 Transcripts with Optimization'
-metaDataHeader[22] = 'Average transcript size without Optimization'
-metaDataHeader[23] = 'Standard deviation of transcriptSize without Optimization'
-metaDataHeader[24] = 'Average transcript size with Optimization'
-metaDataHeader[25] = 'Standard deviation of transcriptSize with Optimization'
-metaDataHeader[26] = 'Number of single Exon transcripts without Optimization'
-metaDataHeader[27] = 'Number of single Exon transcripts with Optimization'
-metaDataHeader[28] = 'True positives'
-metaDataHeader[29] = 'False positives'
-metaDataHeader[30] = 'Total positives'
-metaDataHeader[31] = 'False negatives'
-metaDataHeader[32] = 'Total Transcripts of ReferenceGTF'
-metaDataHeader[33] = 'Sensitivity on IntronChainLevel'
-metaDataHeader[34] = 'Precision on IntronChainLevel'
-metaDataHeader[35] = 'Fuzzy Sensitivity on IntronChainLevel'
-metaDataHeader[36] = 'Fuzzy Precision on IntronChainLevel'
+metaDataHeader[5] = 'paired2'
+metaDataHeader[6] = 'Number of maximum recursion depth'
+metaDataHeader[7] = 'Number of maximum Transcripts/Gene'
+metaDataHeader[8] = 'opt'
+metaDataHeader[9] = 'Norm'
+metaDataHeader[10] = 'Sparsity Constraint'
+metaDataHeader[11] = 'Lambda'
+metaDataHeader[12] = 'Mu'
+metaDataHeader[13] = 'flowOptimization'
+metaDataHeader[14] = 'CostFunctionIndex'
+metaDataHeader[15] = 'maxAdditionalEdgeCount'
+metaDataHeader[16] = 'Mode of Backtrack'
+metaDataHeader[17] = 'Name of gtfFile'
+metaDataHeader[18] = 'Name of csv-Resultfile'
+metaDataHeader[19] = 'Name of jsonFile'
+metaDataHeader[20] = 'Time'
+metaDataHeader[21] = 'Number of Transcripts without Optimization'
+metaDataHeader[22] = 'Number of Transcripts with Optimization'
+metaDataHeader[23] = 'Number of genes with 0 Transcripts with Optimization'
+
+metaDataHeader[24] = 'Average number of transcripts/gene without Optimization'
+metaDataHeader[25] = 'Standard deviation of transcripts/gene without Optimization'
+metaDataHeader[26] = 'Average number of transcripts/gene with Optimization'
+metaDataHeader[27] = 'Standard deviation of transcripts/gene with Optimization'
+
+metaDataHeader[28] = 'Average transcript size without Optimization'
+metaDataHeader[29] = 'Standard deviation of transcriptSize without Optimization'
+metaDataHeader[30] = 'Average transcript size with Optimization'
+metaDataHeader[31] = 'Standard deviation of transcriptSize with Optimization'
+
+metaDataHeader[32] = 'Average transcript size with Optimization'
+metaDataHeader[33] = 'Standard deviation of transcriptSize with Optimization'
+
+metaDataHeader[34] = 'Number of single Exon transcripts without Optimization'
+metaDataHeader[35] = 'Number of single Exon transcripts with Optimization'
+
+metaDataHeader[36] = 'Number of total Genes'
+metaDataHeader[37] = 'Number of Genes exceeding maxTranscripts'
+metaDataHeader[38] = 'Number of Genes exceeding maxRecursion'
+metaDataHeader[39] = 'Number of Genes exceeding maxPairedBins'
+
+metaDataHeader[40] = 'True positives'
+metaDataHeader[41] = 'False positives'
+metaDataHeader[42] = 'Total positives'
+metaDataHeader[43] = 'False negatives'
+metaDataHeader[44] = 'Total Transcripts of ReferenceGTF'
+metaDataHeader[45] = 'Sensitivity on IntronChainLevel'
+metaDataHeader[46] = 'Precision on IntronChainLevel'
+metaDataHeader[47] = 'Fuzzy Sensitivity on IntronChainLevel'
+metaDataHeader[48] = 'Fuzzy Precision on IntronChainLevel'
 
 metadata = {}
 
 metadata[0] = sys.argv[1]
 metadata[1] = 'full' if '-fullgraph' in sys.argv else 'cleaned'
-metadata[2] = 1 if '-full' in sys.argv else None
-metadata[3] = 1 if '-multi' in sys.argv else None
-metadata[4] = 1 if '-paired' in sys.argv else None
-metadata[5] = 1 if '-paired2' in sys.argv else None
-metadata[6] = 1 if '-opt' in sys.argv else 0
-metadata[7] = 0 if '-norm0' in sys.argv else 1 if '-norm1' in sys.argv else 2 if '-norm2' in sys.argv else 1 if '-opt' in sys.argv else None
-metadata[8] = 0 if '-constr0' in sys.argv else 1 if '-constr1' in sys.argv else None
-metadata[9] = lambda1
-metadata[10] = mu
-metadata[11] = 1 if '-flowOptimization' in sys.argv else 0 
-metadata[12] = costFunctionIndex if '-flowOptimization' in sys.argv else None
-metadata[13] = maxAdditionalEdgeCount if '-flowOptimization' in sys.argv and costFunctionIndex>2 else None
-metadata[14] = 'TLLP' if ('-TLLP' in sys.argv and '-flowOptimization' in sys.argv) else 'TLMF' if ('-TLMF' in sys.argv and '-flowOptimization' in sys.argv) else 'DPLP' if ('-DPLP' in sys.argv and '-flowOptimization' in sys.argv) else 'DPMF' if ('-DPMF' in sys.argv and '-flowOptimization' in sys.argv) else 'TLLP' if ('-flowOptimization' in sys.argv) else None
-metadata[15] = gtfFilename
-metadata[16] = resultsFilename
-metadata[17] = jsonFilename if 'jsonFilename' in sys.argv else None
-metadata[18] = '{:5.3f}s'.format(end - start)
-metadata[19] = no_trans
-metadata[20] = no_optimizedTranscripts
-metadata[21] = failed_transcripts
-metadata[22] = statistics.mean(unoptimizedTranscriptSize) if len(unoptimizedTranscriptSize)>0 else None
-metadata[23] = statistics.stdev(unoptimizedTranscriptSize) if len(unoptimizedTranscriptSize)>0 else None
-metadata[24] = statistics.mean(optimizedTranscriptSize) if len(optimizedTranscriptSize)>0 else None
-metadata[25] = statistics.stdev(optimizedTranscriptSize) if len(optimizedTranscriptSize)>0 else None
-metadata[26] = numberSingleExonTranscriptsBeforeOptimization
-metadata[27] = numberSingleExonTranscriptsAfterOptimization
+metadata[2] = 1 if '-full' in sys.argv else 0
+metadata[3] = 1 if '-multi' in sys.argv else 0
+metadata[4] = 1 if '-paired' in sys.argv else 0
+metadata[5] = 1 if '-paired2' in sys.argv else 0
+metadata[6] = maxRecursionDepth
+metadata[7] = maxTranscripts
+metadata[8] = 1 if '-opt' in sys.argv else 0
+metadata[9] = 0 if '-norm0' in sys.argv else 1 if '-norm1' in sys.argv else 2 if '-norm2' in sys.argv else 1 if '-opt' in sys.argv else -1
+metadata[10] = 0 if '-constr0' in sys.argv else 1 if '-constr1' in sys.argv else -1
+metadata[11] = lambda1
+metadata[12] = mu
+metadata[13] = 1 if '-flowOptimization' in sys.argv else 0 
+metadata[14] = costFunctionIndex if '-flowOptimization' in sys.argv else -1
+metadata[15] = maxAdditionalEdgeCount if '-flowOptimization' in sys.argv and costFunctionIndex>2 else None
+metadata[16] = 'TLLP' if ('-TLLP' in sys.argv and '-flowOptimization' in sys.argv) else 'TLMF' if ('-TLMF' in sys.argv and '-flowOptimization' in sys.argv) else 'DPLP' if ('-DPLP' in sys.argv and '-flowOptimization' in sys.argv) else 'DPMF' if ('-DPMF' in sys.argv and '-flowOptimization' in sys.argv) else 'TLLP' if ('-flowOptimization' in sys.argv) else None
+metadata[17] = gtfFilename
+metadata[18] = resultsFilename
+metadata[19] = jsonFilename if '-jsonFilename' in sys.argv else None
+metadata[20] = '{:5.3f}s'.format(end - start)
+metadata[21] = sum(no_transcripts)
+metadata[22] = sum(no_optimizedTranscripts)
+metadata[23] = failed_transcripts
+
+metadata[24] = statistics.mean(no_transcripts) if len(no_transcripts)>0 else None
+metadata[25] = statistics.stdev(no_transcripts) if len(no_transcripts)>0 else None
+metadata[26] = statistics.mean(no_optimizedTranscripts) if len(no_optimizedTranscripts)>0 else None
+metadata[27] = statistics.stdev(no_optimizedTranscripts) if len(no_optimizedTranscripts)>0 else None
+
+metadata[28] = statistics.mean(unoptimizedTranscriptSize) if len(unoptimizedTranscriptSize)>0 else None
+metadata[29] = statistics.stdev(unoptimizedTranscriptSize) if len(unoptimizedTranscriptSize)>0 else None
+metadata[30] = statistics.mean(optimizedTranscriptSize) if len(optimizedTranscriptSize)>0 else None
+metadata[31] = statistics.stdev(optimizedTranscriptSize) if len(optimizedTranscriptSize)>0 else None
+
+metadata[32] = statistics.mean(no_Exons) if len(no_Exons)>0 else None
+metadata[33] = statistics.stdev(no_Exons) if len(no_Exons)>0 else None
+
+metadata[34] = numberSingleExonTranscriptsBeforeOptimization
+metadata[35] = numberSingleExonTranscriptsAfterOptimization
+metadata[36] = geneCounter
+metadata[37] = transcriptExceededCounter
+metadata[38] = recursionExceededCounter
+metadata[39] = pairedBinExceeded
 
 #Write MetaData to file
 metadataFile = open(resultsFilename, 'a')
@@ -509,5 +638,6 @@ for i in range(len(metadata)-1):
 metadataFile.write(str(metadata[len(metadata)-1]))
 metadataFile.close()
 
+print('{:5.3f}s'.format(end - start))
 
 

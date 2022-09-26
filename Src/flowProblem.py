@@ -155,12 +155,11 @@ def writeGStarQuadratic(graph:dict, costIndex:int, maxAdditionalEdgeCount):
         for edgeKey, edgeValue in graph.edges.items():    
             coverage = int(edgeValue['counts']['c']) # Assign Coverage of the particular edge to edge
             type = edgeValue['type'] # Assign edge type to the variable type
-            length = max(1, edgeValue['length']) # Assign length of the edge to the variable "lenght", Helper edges will receive the length 0
-            for i in range(coverage):
+            length = max(1, edgeValue['length']) # Assign length of the edge to the variable "length", Helper edges will receive the length 0
+            for i in range(sourceDemand):
                 graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = 1, weight=int(scalingFactor*(costFunction(i, 1, coverage, costIndex, length, type)))) # Add Forward edge with capacity 1 and weight = costFunction
+            for i in range(coverage):
                 graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = 1, weight=int(scalingFactor*(costFunction(i, 1, coverage, costIndex, length, type)))) # Add backward edges with capacity 1 and costFunction    
-            counter = counter + 1 # Increase EdgeCounter
-            graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = sourceDemand, weight=int(scalingFactor*(costFunction(i, 1, coverage, costIndex, length, type)))) # Add Forward edge with capacity sourceDemand and weight = costFunction
 
     # Write DemandDictionary
     nodeDemand = {}
@@ -211,14 +210,7 @@ def costFunction (i, x: int, coverage:int, costIndex, length:int, type:str):
     elif costIndex == 8:
         return i/coverage
 
-def flowDecompositionWithTranscriptlist(graph:dict, transcripts:list, decomposition_option:str, flow):
-    # Get transcripts
-    if len(transcripts)>0:
-        # Use previously computed transcripts by enumeration function 
-        transcriptsCopy = deepcopy(transcripts) 
-    else:
-        # Use NetworkX build-in method to obtain all possible paths
-        transcriptsCopy = list(nx.all_simple_paths(graph, '0', '1')) 
+def flowDecompositionWithTranscriptlist(graph:dict, transcriptsCopy:list, decomposition_option:str, flow): 
     # define new list for optimized transcripts
     optimizedTranscripts = []
     # Compute FlowDecomposition by removing the flow of the longest path from the transcript list
