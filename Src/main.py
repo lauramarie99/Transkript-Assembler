@@ -361,9 +361,12 @@ else:
             elif "-flowOptimization" in sys.argv:
                 
                 # Get transcripts
-                if len(transcripts)==0:
+                if ("-TLLP" in sys.argv or "-TLMF" in sys.argv):
+                    if len(transcripts)==0:
+                        if geneCounter ==8182:
+                            print('Trying to establish all paths with NetworkX.')
                 # Use NetworkX build-in method to obtain all possible paths
-                    transcripts = list(nx.all_simple_paths(Graph, '0', '1'))
+                        transcripts = list(nx.all_simple_paths(Graph, '0', '1'))
                 transcriptsCopy = deepcopy(transcripts)
 
                 graphCopy = deepcopy(Graph)
@@ -374,7 +377,7 @@ else:
                 
                 # Catch infeasible models or models that are unbounded below
                 try:
-                    g_Star, newGraph, flow = flowProblem.writeGStar(Graph, costFunctionIndex, maxAdditionalEdgeCount)
+                    g_Star, newGraph, flow = flowProblem.writeGStar(Graph, costFunctionIndex, maxAdditionalEdgeCount, geneCounter)
                     if g_Star == 0:
                         skipOptimization = True    
                 except nx.NetworkXUnfeasible or nx.NetworkXUnbounded:
@@ -387,14 +390,23 @@ else:
                     if "-TLLP" in sys.argv:
                         optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcriptsCopy, 'longestPath', flow)
                         optimizedTranscripts.append(optimizedGeneTranscripts)
+                        if residualFlow > 0:
+                            residualFlowList.append(geneCounter)
+                            print('Residual Flow:' + str(residualFlow) + 'left')
                     elif "-TLMF" in sys.argv:
                         optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcriptsCopy, 'maximumFlow', flow)
                         optimizedTranscripts.append(optimizedGeneTranscripts)
+                        if residualFlow > 0:
+                            residualFlowList.append(geneCounter)
+                            print('Residual Flow:' + str(residualFlow) + 'left')
                     elif "-DPLP" in sys.argv:
-                        optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionDP(newGraph, 'longestPath', flow)
+                        optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionDP(newGraph, 'longestPath', flow, geneCounter)
                         optimizedTranscripts.append(optimizedGeneTranscripts)
+                        if residualFlow > 0:
+                            residualFlowList.append(geneCounter)
+                            print('Residual Flow:' + str(residualFlow) + 'left')
                     elif "-DPMF" in sys.argv:
-                        optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionDP(newGraph, 'maximumFlow', flow)
+                        optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionDP(newGraph, 'maximumFlow', flow, geneCounter)
                         optimizedTranscripts.append(optimizedGeneTranscripts)
                         if residualFlow > 0:
                             residualFlowList.append(geneCounter)
@@ -402,7 +414,12 @@ else:
                     else: 
                         optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'longestPath', flow)
                         optimizedTranscripts.append(optimizedGeneTranscripts)
-                    
+                if len(optimizedGeneTranscripts) == 0:
+                    print('Gene ' +str(geneCounter) + ' exceeded max length of queue in DP')
+                    failed_transcripts += 1
+                    failed_transcripts_ls.append(geneCounter)
+                    geneCounter += 1
+
             if int(geneCounter/num_genes*100)>= percentageCounter:
                 print(f"{percentageCounter}  % finished")
                 percentageCounter = percentageCounter+20
@@ -469,8 +486,6 @@ if ("-jsonFilename" in sys.argv):
     json_object = json.dumps(data_dict)
     with open(jsonFilename, 'w') as jsonFile:
         jsonFile.write(json_object)
-        jsonFile.write('\n')
-        jsonFile.write('Time: ' + str(end - start))
         jsonFile.close()
 
 # Collect Data for Analysis
@@ -563,8 +578,8 @@ metaDataHeader[29] = 'Standard deviation of transcriptSize without Optimization'
 metaDataHeader[30] = 'Average transcript size with Optimization'
 metaDataHeader[31] = 'Standard deviation of transcriptSize with Optimization'
 
-metaDataHeader[32] = 'Average transcript size with Optimization'
-metaDataHeader[33] = 'Standard deviation of transcriptSize with Optimization'
+metaDataHeader[32] = 'Average number of exons/Gene'
+metaDataHeader[33] = 'Standard deviation of exons/Gene'
 
 metaDataHeader[34] = 'Number of single Exon transcripts without Optimization'
 metaDataHeader[35] = 'Number of single Exon transcripts with Optimization'

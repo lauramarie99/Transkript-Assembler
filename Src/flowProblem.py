@@ -8,13 +8,13 @@ import sys, os
 import numpy as np
 import scipy as sp
 
-def writeGStar(graph:dict, costIndex:int, maxAdditionalEdgeCount:int):
+def writeGStar(graph:dict, costIndex:int, maxAdditionalEdgeCount:int, geneCounter):
     if costIndex<=2:
-        return writeGStarLinear(graph, costIndex)
+        return writeGStarLinear(graph, costIndex, geneCounter)
     else:
-        return writeGStarQuadratic(graph, costIndex, maxAdditionalEdgeCount)
+        return writeGStarQuadratic(graph, costIndex, maxAdditionalEdgeCount, geneCounter)
 
-def writeGStarLinear(graph:dict, costIndex:int):
+def writeGStarLinear(graph:dict, costIndex:int, geneCounter):
     graphStar = nx.DiGraph() # Define new Graph
     graphStar.add_nodes_from(graph.nodes.keys()) # Add all nodes from the original Graph
     graphStar.add_node('s0') # Add s0
@@ -66,7 +66,6 @@ def writeGStarLinear(graph:dict, costIndex:int):
     
     # Calculate max_flow at min cost
     flowDict = nx.max_flow_min_cost(graphStar, 's*', 't*', 'capacity', 'weight')
-    
     # Correct cov(u,v) on original graph
     for edgeKey, edgeValue in graph.edges.items():
         edgeValue['counts']['c'] = edgeValue['counts']['c'] + flowDict[edgeKey[0]][edgeKey[1]] - flowDict[edgeKey[1]][edgeKey[0]]
@@ -77,7 +76,7 @@ def writeGStarLinear(graph:dict, costIndex:int):
         flow = flow + edge[2]['counts']['c']
     return(graphStar, graph, flow)    
 
-def writeGStarQuadratic(graph:dict, costIndex:int, maxAdditionalEdgeCount):
+def writeGStarQuadratic(graph:dict, costIndex:int, maxAdditionalEdgeCount, geneCounter):
     graphStar = nx.MultiDiGraph() # Define new MultiDiGraph
     graphStar.add_nodes_from(graph.nodes.keys()) # Add all nodes from the original Graph
     graphStar.add_node('s0') # Add s0    
@@ -123,7 +122,7 @@ def writeGStarQuadratic(graph:dict, costIndex:int, maxAdditionalEdgeCount):
     # CostFunction 3: f(x) = x^2 modelled as ((i+x)*(i+x) - i*i)/x; 
     # CostFunction 4: f(x) = x^2/cov(u,v) modelled as ((i+x)*(i+x) - i*i)/(x*cov(u,v))
     # CostFunction 5: f(x( = x^2 * length(u,v)/cov(u,v) modelled as ((i+x)*(i+x) - i*i)*length(u,v)/(x*cov(u,v))
-    
+    edgeCounter = 0 
     if costIndex <6:
         for edgeKey, edgeValue in graph.edges.items():    
             # Read edge properties
@@ -135,15 +134,17 @@ def writeGStarQuadratic(graph:dict, costIndex:int, maxAdditionalEdgeCount):
                 scalingFactor = 1 
             else:
                 scalingFactor = 10e7 
+            maxAdditionalEdgeCount = min(100, int(math.ceil(25000/(len(graph.edges())))))
             # Calculate necessary stepSize (y and x) for each forward and backward edge to achieve at maximum maxAdditionalEdgeCount edges 
             y = int(max(1,math.floor(sourceDemand/maxAdditionalEdgeCount))) # Stepsize for ForwardEdges
             x = int(max(1, math.floor(coverage/maxAdditionalEdgeCount))) # Stepsize for Backwardedges
             for i in range(0,(min(sourceDemand, maxAdditionalEdgeCount))):
+                edgeCounter +=1
                 graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = y, weight=int(scalingFactor*(costFunction(i, y, coverage, costIndex, length, type)))) # Add Forward edge with capacity y and weight = costFunction
             for i in range(0, min(coverage, maxAdditionalEdgeCount)):
+                edgeCounter +=1
                 graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = x, weight=int(scalingFactor*(costFunction(i, x, coverage, costIndex, length, type)))) # Add backward edges with capacity x and costFunction    
             #graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = sourceDemand, weight=int(scalingFactor*(costFunction(i, sourceDemand, coverage, costIndex, length, type)))) # Add Forward edge with capacity sourceDemand and weight = costFunction 
-
     # Not recommended Costfunctions because of heavy computation time
     # Costfunction 6: f(x) = x^2 (modeled as ((i+1)^2-i^2) 
     # Costfunction 7: f(x) = x^2 (modelled as x(x+1)/2) 
@@ -172,6 +173,7 @@ def writeGStarQuadratic(graph:dict, costIndex:int, maxAdditionalEdgeCount):
             nodeDemand[nodeKey] = 0
     
     # Set Demand for each node in Off-Set Network
+    
     nx.set_node_attributes(graphStar, nodeDemand, name='demand')
     
     # Calculate min_cost_flow
@@ -253,27 +255,24 @@ def flowDecompositionWithTranscriptlist(graph:dict, transcriptsCopy:list, decomp
         os.exit()
     return optimizedTranscripts, flow
 
-def flowDecompositionDP (graph: dict, decomposition_option:str, flow:int):
+def flowDecompositionDP (graph: dict, decomposition_option:str, flow:int, geneCounter):
     optimizedTranscripts = []
     if decomposition_option == 'longestPath':
-        while(flow>0):
+        while(flow!=0):
             # Forward
-            n = max(int(node) for node in list(graph.nodes()))+1 # Define length of matrix
             longestPathDict = {}
             queue = [] # Initialize Queue
             queue.append('0') # Append first Item
             longestPathDict['0'] = (None, 0) # Set length of source to successors to 1
-            for u in list(graph.adj['0']):
-                queue.append(u) # append all successors of source node to the queue
-            while(len(queue)>0):
-                v = queue.pop(0) # Get first item of the queue
-                length = -1
+            # for u in list(graph.adj['0']):
+            #     queue.append(u) # append all successors of source node to the queue
+            queue = [] # Initialize PriorityQueue
+            for v in list(nx.topological_sort(graph)):
+                length=-1
                 for u in list(graph.predecessors(v)):
-                    if u in longestPathDict.keys() and length < longestPathDict[u][1]:
-                        length = longestPathDict[u][1] 
+                    if u in longestPathDict.keys() and length <longestPathDict[u][1]:
+                        length = longestPathDict[u][1]
                         longestPathDict[v] = (u, longestPathDict[u][1]+1)
-                for u in list(graph.adj[v]): # append all sucessors of v to the queue
-                    queue.append(u)
             # Backtracking
             transcript = []
             length = longestPathDict['1'][1] 
@@ -293,6 +292,7 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow:int):
                     graph.remove_edge(transcript[i], transcript[i+1])
             flow = flow - minFlow
             optimizedTranscripts.append((transcript, minFlow))
+
         #print('flowDecompositionDP with longestPath and residualFlow = ' + str(flow))
         
 
@@ -341,23 +341,23 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow:int):
         # print('flowDecompositionDP with longestPath and residualFlow = ' + str(flow))
 
     elif decomposition_option == 'maximumFlow':
-
+        topologicalOrder = list(nx.topological_sort(graph))
         #1.1 MaxFlowDictionary
-        while(flow>0):        
+        while(flow!=0):        
             #Forward 
             maxFlowDict = {}
             #Initializing
             for key in graph.edges.keys():
                 maxFlowDict[key] = graph.edges[key]['counts']['c']
             queue = [] # Initialize PriorityQueue
-            for u in list(graph.adj['0']):
-                queue.append(u)
-            while(len(queue)>0):
-                v = queue.pop(0)
+            for v in topologicalOrder:
+                if v=='0':
+                    continue
                 maxPreFlow = max(maxFlowDict[(x,v)] for x in graph.predecessors(v))
                 for u in list(graph.adj[v]):
                     maxFlowDict[(v,u)] = min(maxFlowDict[(v,u)], maxPreFlow)
-                    queue.append(u)
+                if v=='1':
+                    break
             if max(maxFlowDict[(x,'1')] for x in graph.predecessors('1')) == 0:
                 break
             # Backtracking
@@ -385,8 +385,8 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow:int):
                 # Eliminate edges with minimal flow
                 for i in range(len(transcript)-1):
                     graph.edges[transcript[i], transcript[i+1]]['counts']['c'] = graph.edges[transcript[i], transcript[i+1]]['counts']['c'] - minMaxFlow 
-                    if graph.edges[transcript[i], transcript[i+1]]['counts']['c'] == 0:
-                        graph.remove_edge(transcript[i], transcript[i+1])
+                    # if graph.edges[transcript[i], transcript[i+1]]['counts']['c'] == 0:
+                    #     graph.remove_edge(transcript[i], transcript[i+1])
                 flow = flow - minMaxFlow
         #print('flowDecompositionDP with maximumFlow and residualFlow = ' + str(flow))
 
