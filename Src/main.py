@@ -1,4 +1,4 @@
-# IMPORT
+# PACKAGES
 from re import A
 import sys
 import parse_graph_new
@@ -15,19 +15,19 @@ import os
 import statistics
 
 # VARIABLES
-start = time.time()
-start_gene = time.time()
-no_transcripts = []
-no_optimizedTranscripts = []
-numberGenesZeroTranscripts = 0
-numberSingleExonTranscriptsBeforeOptimization = 0
-numberSingleExonTranscriptsAfterOptimization = 0
-optimizedTranscriptSize = []
-unoptimizedTranscriptSize = []
-recursionExceededCounter = 0
-failed_transcripts = 0
-failed_transcripts_ls = []
-data_dict = dict()
+start = time.time() # calculate total time needed
+start_gene = time.time() # calculate time needed for one gene
+no_transcripts = [] # total number of transcripts
+no_optimizedTranscripts = [] # list with number of optimized transcripts per gene
+numberGenesZeroTranscripts = 0 
+numberSingleExonTranscriptsBeforeOptimization = 0 # total number of transcripts with one exon before optimization
+numberSingleExonTranscriptsAfterOptimization = 0 # total number of transcripts with one exon after optimization
+optimizedTranscriptSize = [] # list with number of exons for each transcript before optimization 
+unoptimizedTranscriptSize = [] # list with number of exons for each transcript after optimization
+recursionExceededCounter = 0 # number of genes with recursion error
+numberGenesFailedOpt = 0 # number of genes with failed optimization
+genesFailedOpt = [] # list of genes which failed
+data_dict = dict() # 
 percentageCounter = 0
 transcriptExceededCounter = 0
 maxRecursionDepth = 0
@@ -192,44 +192,43 @@ if(sys.argv[1] =="-help"):
     print("-outputGTF: Provide a name for the gtf-File that is written with the transcripts with the ending .gtf (Default: transcripts.gtf")
     print("-resultsFilename: Provide a name where the results are being saved. (Default: results.csv")
     print("-jsonFilename: If you want the transcripts of the genes saved in an additionale json file for further usage, provide a filename in which the transcripts with the expressionlevel or flow will be saved.")
-#read in file to estimate calculation time
+
+# Read in file to estimate calculation time
 else:
     with open(sys.argv[1]) as file:
         lines = file.readlines()
         num_genes = len([line for line in lines if "--------------" in line])
 
 
-#read in file for parsing
+# Read in file for parsing
     with open(sys.argv[1]) as f:
         fileEndReached = False
         f.readline()  # skip ---- seperator line
         geneCounter = 0
         residualFlowList = []
-        number_optimizedTranscripts = 0
 
         while not fileEndReached:
-            # READ META AND BIN DATA FROM FILE
+            # Read meta and bin data from file
             f.readline()  # skip ==META
             Chromosome, Strand, Exons = parse_graph_new.parse_meta(f)
             Bins = parse_graph_new.parse_bins(f)
             PairedBins = parse_graph_new.parse_pairs(f)
             PairedBins_copy = deepcopy(PairedBins)
             no_Exons.append(len(Exons))
-            # BUILD GRAPH
+            # Build graph
             G_full = nx.DiGraph()
             fileEndReached, skip = parse_graph_new.parse_graph(f, G_full, Exons)
 
             if not fileEndReached and not skip:
                 G_clean = nx.DiGraph()
                 fileEndReached, _ = parse_graph_new.parse_graph(f, G_clean, Exons)
-                # nx.draw_networkx(G_clean, with_labels=True, arrowsize=12)
-                # plt.show()
             if skip:
                 G_clean = G_full
 
-            transcripts = []
+            # Variables
+            transcripts = [] # list of transcripts
+            number_optimizedTranscripts = 0 # number of optimized transcripts for -opt argument 
             Graph = None
-            
             if("-completegraph" in sys.argv):
                 Graph = G_full
             else:
@@ -317,27 +316,27 @@ else:
                 if("-norm0" in sys.argv and "-constr0" in sys.argv):
                     var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L0", sparsity_constr="L0", factor=lambda1)
                 elif ("-norm0" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L0", "L1", mu)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L0", sparsity_constr="L1", factor=mu)
                 elif ("-norm1" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L1", "L0", lambda1)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L1", sparsity_constr="L0", factor=lambda1)
                 elif ("-norm1" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L1", "L1", mu)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L1", sparsity_constr="L1", factor=mu)
                 elif ("-norm2" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L2", "L0", lambda1)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L2", sparsity_constr="L0", factor=lambda1)
                 elif ("-norm2" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L2", "L1", mu)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L2", sparsity_constr="L1", factor=mu)
                 elif ("-norm0" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L0", None, lambda1)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L0", sparsity_constr=None, factor=lambda1)
                 elif ("-norm1" in sys.argv):
-                    var_dict = optimize.model(Graph, transcripts, "L1", None, lambda1)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L1", sparsity_constr=None, factor=lambda1)
                 elif ("-norm2" in sys.argv):
                     var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L2", sparsity_constr=None, factor=0)
                 else:
                     var_dict = optimize.model(Graph, transcripts, "L1", None, 0) # if no norm is specified, norm1 is used
                 
                 if var_dict == None:
-                    failed_transcripts += 1
-                    failed_transcripts_ls.append(geneCounter)
+                    numberGenesFailedOpt += 1
+                    genesFailedOpt.append(geneCounter)
                     geneCounter += 1
                     continue
             
@@ -416,8 +415,8 @@ else:
                         optimizedTranscripts.append(optimizedGeneTranscripts)
                 if len(optimizedGeneTranscripts) == 0:
                     print('Gene ' +str(geneCounter) + ' exceeded max length of queue in DP')
-                    failed_transcripts += 1
-                    failed_transcripts_ls.append(geneCounter)
+                    numberGenesFailedOpt += 1
+                    genesFailedOpt.append(geneCounter)
                     geneCounter += 1
 
             if int(geneCounter/num_genes*100)>= percentageCounter:
@@ -429,7 +428,7 @@ else:
             if ("-flowOptimization" in sys.argv):
                 # Add number to optimized transcripts
                 if (len(optimizedGeneTranscripts)) == 0:
-                    failed_transcripts += 1 
+                    numberGenesFailedOpt += 1 
                 # Save number of optimized transcripts for this Gene if -flowOptimization is used
                 no_optimizedTranscripts.append(len(optimizedGeneTranscripts))
                 for i in range(len(optimizedGeneTranscripts)):
@@ -463,11 +462,11 @@ else:
                         #create list that contains transcripts from all genes and their expression levels. List contains dictionary where key is the gene number (position in file) and values are transcripts and expression level
                         data.append((transcript, var_dict[str(i)]))
                     elif ("-opt" not in sys.argv):
-                        unoptimizedTranscriptSize.append(len(transcript))
-                        if len(transcript)==1:
-                            numberSingleExonTranscriptsBeforeOptimization +=1
                         parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),str(geneCounter)+"."+str(i+1), 'Expressionlevel: Not determined')
                         data.append(transcript)
+                    unoptimizedTranscriptSize.append(len(transcript))
+                    if len(transcript)==1:
+                        numberSingleExonTranscriptsBeforeOptimization +=1
                 # Save number of optimized transcripts for this Gene if -opt is used
                 no_optimizedTranscripts.append(number_optimizedTranscripts)
             # Write entry for Gene with list of transcripts and expression levels/flow
@@ -624,7 +623,7 @@ metadata[19] = jsonFilename if '-jsonFilename' in sys.argv else None
 metadata[20] = '{:5.3f}s'.format(end - start)
 metadata[21] = sum(no_transcripts)
 metadata[22] = sum(no_optimizedTranscripts)
-metadata[23] = failed_transcripts
+metadata[23] = numberGenesFailedOpt
 
 metadata[24] = statistics.mean(no_transcripts) if len(no_transcripts)>0 else None
 metadata[25] = statistics.stdev(no_transcripts) if len(no_transcripts)>0 else None
