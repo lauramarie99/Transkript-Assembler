@@ -14,7 +14,7 @@ import optimize
 import os
 import statistics
 
-# VARIABLES
+# GLOBAL VARIABLES
 start = time.time() # calculate total time needed
 start_gene = time.time() # calculate time needed for one gene
 no_transcripts = [] # total number of transcripts
@@ -27,14 +27,14 @@ unoptimizedTranscriptSize = [] # list with number of exons for each transcript a
 recursionExceededCounter = 0 # number of genes with recursion error
 numberGenesFailedOpt = 0 # number of genes with failed optimization
 genesFailedOpt = [] # list of genes which failed
-data_dict = dict() # 
-percentageCounter = 0
-transcriptExceededCounter = 0
-maxRecursionDepth = 0
-pairedBinExceeded = 0
-no_Exons = []
-# Additional Options
+data_dict = dict() # dictionary storing all transcripts for each gene
+percentageCounter = 0 # percentage of genes completed
+transcriptExceededCounter = 0 # number of genes where the number of transcripts exceeds the allowed number (default: 1e4)
+maxRecursionDepth = 0 # maximum recursion depth
+pairedBinExceeded = 0 # number of genes where the number of paired bins exceeds the allowed number (1e4)
+no_Exons = [] # list with number of exons per gene
 
+# Additional Options
 # 1. OutputFilename
 if "-outputGTF" in sys.argv:
     for i in range(len(sys.argv)):
