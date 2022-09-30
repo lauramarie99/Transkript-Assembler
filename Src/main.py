@@ -78,16 +78,14 @@ file_gtf = open(gtfFilename, "w")
 # sys.setrecursionlimit(maxRecursionDepth)
 
 # 5. MaxTranscripts
-
+maxTranscripts = int(1e4) # default value
 if "-maxTranscripts" in sys.argv:
     for i in range(len(sys.argv)):
         if sys.argv[i] == "-maxTranscripts":
             maxExons = str(sys.argv[i+1])
             break
-else:
-    maxTranscripts=int(1e4)
 
-# 8. Lambda and mu
+# 6. Lambda and mu
 if ('-opt' not in sys.argv):
     lambda1=None
     mu = None
@@ -111,9 +109,9 @@ else:
         elif ("-norm2" in sys.argv and "-constr1" in sys.argv):
             lambda1 = None
         elif ("-norm0" in sys.argv):
-            lambda1 = 0
+            lambda1 = None
         elif ("-norm1" in sys.argv):
-            lambda1 = 0
+            lambda1 = None
         elif ("-norm2" in sys.argv):
             lambda1 = None
         else:
@@ -322,13 +320,13 @@ else:
                 elif ("-norm2" in sys.argv and "-constr1" in sys.argv):
                     var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L2", sparsity_constr="L1", factor=mu)
                 elif ("-norm0" in sys.argv):
-                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L0", sparsity_constr=None, factor=lambda1)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L0", sparsity_constr=None, factor=0)
                 elif ("-norm1" in sys.argv):
-                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L1", sparsity_constr=None, factor=lambda1)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L1", sparsity_constr=None, factor=0)
                 elif ("-norm2" in sys.argv):
                     var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L2", sparsity_constr=None, factor=0)
                 else:
-                    var_dict = optimize.model(Graph, transcripts, "L1", None, 0) # if no norm is specified, norm1 is used
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L1", sparsity_constr=None, factor=0) # if no norm is specified, norm1 is used
                 
                 if var_dict == None:
                     numberGenesFailedOpt += 1
