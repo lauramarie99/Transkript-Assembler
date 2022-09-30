@@ -15,7 +15,7 @@ import statistics
 # Global variables
 start = time.time() # calculate total time needed
 start_gene = time.time() # calculate time needed for one gene
-no_transcripts = [] # total number of transcripts
+no_transcripts = [] # total number of transcripts (without optimization)
 no_optimizedTranscripts = [] # list with number of optimized transcripts per gene
 numberGenesZeroTranscripts = 0 
 numberSingleExonTranscriptsBeforeOptimization = 0 # total number of transcripts with one exon before optimization
@@ -144,9 +144,9 @@ else:
         else:
             mu = None
 
-# MAIN
-#prints out usage instructions
+# Main
 
+#prints out usage instructions
 if(sys.argv[1] =="-help"):
     print("usage: type python main.py [input graph] [arguments]")
     print("arguments:")
@@ -158,12 +158,12 @@ if(sys.argv[1] =="-help"):
     print("-maxRecursion: Specify maximum recursion Depth (Default: 1000)")
     print("-opt for optimization function and to gain expression levels")
     print("--> requires prior specification of enumeration type")
-    print("--> specification of norm and sparsity constraint")
-    print("-lambda: specify penality size for sparsity constrain 0")
-    print("-mu: specify the Maximum number of non-zero transcripts for sparsity contrain 1")
+    print("--> specification of norm and sparsity constraint (default values are used otherwise")
+    print("-lambda: Specify penality size for sparsity constraint 0")
+    print("-mu: Specify the maximum number of non-zero transcripts for sparsity contraint 1")
     print("--> example: main.py Test.graph -paired -opt -norm1 -constr0")
     print("--> results are stored in same folder as save.jsn")
-    print("-completegraph: combine with other arguments to use the full graph (cleaned graph is used otherwise)")
+    print("-completegraph: Combine with other arguments to use the full graph (cleaned graph is used otherwise)")
     print("-flowOptimization: Use flow-based optimization for establishing a set of paths")
     print("--> specify how flow decomposition is being attained:")
     print("-- TLLP: (=TranscriptListLongestPath) in every step the total flow will be reduced by the flow of the longest path of the previously generated set of transcripts")
@@ -291,7 +291,7 @@ else:
                 transcripts_copy = deepcopy(transcripts)
                 filtered_transcripts = pairedbin_enumeration.filter_transcripts(transcripts_copy,pairedbins_grouped)
             
-            # Skipp this Gene if number of transcripts exceed maxTranscripts
+            # Skip this gene if number of transcripts exceed maxTranscripts
             if len(transcripts)>maxTranscripts:
                 transcriptExceededCounter +=1
                 print(str(geneCounter) + ' exceeds ' + str(maxTranscripts) + ' transcripts.')
@@ -305,8 +305,7 @@ else:
             if("-opt" in sys.argv):
                 # Get transcripts
                 if len(transcripts)==0:
-                # Use NetworkX build-in method to obtain all possible paths
-                    transcripts = list(nx.all_simple_paths(Graph, '0', '1'))
+                    transcripts = list(nx.all_simple_paths(Graph, '0', '1')) # Use NetworkX build-in method to obtain all possible paths
                 if("-norm0" in sys.argv and "-constr0" in sys.argv):
                     var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L0", sparsity_constr="L0", factor=lambda1)
                 elif ("-norm0" in sys.argv and "-constr1" in sys.argv):
@@ -335,7 +334,7 @@ else:
                     continue
             
 
-                #function to estimate calculation time
+                # function to estimate calculation time
                 os.system('clear')
                 print(f"Gene {len(data_dict)} of {num_genes} done.")
                 end_gene = time.time()
