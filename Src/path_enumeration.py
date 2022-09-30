@@ -7,18 +7,20 @@ import parse_graph_new
 """
 The enumeration function is searching for all possible paths in a given graph.
 """
-def enumeration(graph,transcripts:list,node:str,path:list, endnode:str, transcript:bool):
-    # if the end node is reached, a path is found and added to the transkript list
+def enumeration(graph,transcripts:list,node:str,path:list, endnode:str, transcript:bool, maxTranscripts):
+    if len(transcripts)>maxTranscripts:
+        return
+        # if the end node is reached, a path is found and added to the transkript list
     if node == endnode:
         if transcript == True:
             transcripts.append(parse_graph_new.nodepath_to_transcript(graph,path))
         else:
             transcripts.append(path)
-        return  
+        return
     else:
         succ = list(graph.adj[node]) # succ list contains all successors
         for n in succ:
-            enumeration(graph,transcripts,n,(path + [n]),endnode,transcript)
+            enumeration(graph,transcripts,n,(path + [n]),endnode,transcript, maxTranscripts)
     return transcripts
 
 
@@ -39,8 +41,13 @@ def get_multibins(bins:list):
 Enumeration function with multi bin constraint.
 The act_bins list is empty at the beginning.
 """
-def enumeration_bins2(graph,transcripts:list,node:str,path:list,act_bins:list,bins:list,endnode:str,transcript:bool):
-    
+def enumeration_bins2(graph,transcripts:list,node:str,path:list,act_bins:list,bins:list,endnode:str,transcript:bool, maxTranscripts, invalidPathCounter):
+    if len(transcripts)> int(1e4) and transcript == True:
+        return
+    if len(transcripts)>maxTranscripts:
+        return
+    if invalidPathCounter[0]>1e3:
+        return
     if node == endnode:
         if transcript == True:
             transcripts.append(parse_graph_new.nodepath_to_transcript(graph,path))
@@ -50,7 +57,9 @@ def enumeration_bins2(graph,transcripts:list,node:str,path:list,act_bins:list,bi
     else:
         succ = list(graph.adj[node]) # succ contains all successor nodes
         for n in succ:
-            
+            if n=='1' and endnode!='1':
+                invalidPathCounter[0]= invalidPathCounter[0] +1 
+                continue
             if graph.edges[node,n]['type'] == "SpliceJunction": # if the edge is a splice junction, we will reach a new exon and have to check for compatibility!
                 start_exon = graph.edges[node,n]["startExon"] # start Exon 
                 end_exon = graph.edges[node,n]["endExon"] # end Exon
@@ -67,8 +76,8 @@ def enumeration_bins2(graph,transcripts:list,node:str,path:list,act_bins:list,bi
 
                 # If there are no compatible bins, but other active multi-bins, stop execution of this path
                 if ((valid == False) and (len(act_bins) != 0)):
+                    invalidPathCounter[0]= invalidPathCounter[0] +1 
                     continue
-
                 # Get all new bins
                 for bin2 in bins:
                     if ((bin2.exons[0] == start_exon) and (bin2.exons[1] == end_exon)):
@@ -80,6 +89,9 @@ def enumeration_bins2(graph,transcripts:list,node:str,path:list,act_bins:list,bi
                 new_bins = act_bins
 
             # Follow the path
-            enumeration_bins2(graph,transcripts,n,(path + [n]),new_bins,bins,endnode,transcript)          
-            
+            try:
+                enumeration_bins2(graph,transcripts,n,(path + [n]),new_bins,bins,endnode,transcript, maxTranscripts, invalidPathCounter)          
+            except RecursionError as re:
+                print('Transkript/Bins exceeds max RecursionDepth')
+                return
     return transcripts

@@ -1,6 +1,7 @@
 # IMPORT
 import path_enumeration
 from collections import namedtuple
+import sys
 
 BinT = namedtuple('BinT', 'exons count')
 
@@ -10,9 +11,11 @@ The get_pairedbins function takes all pairedbins and returns a list of bins, whi
 For each pairedbin, all possible paths connecting the left and right exons are determined.
 A new bin is created for each path, containing the left and right bins and the corresponding path.
 """
-def get_pairedbins(graph,pairedbins,multibins):
+def get_pairedbins(graph,pairedbins,multibins, maxTranscripts):
     all_pairedbins = [] # List storing all bins
     for pairedbin in pairedbins:
+        if len(all_pairedbins)>1e4:
+            break
         start_node = "" # Start node of enumeration
         end_node = "" # End node of enumeration
         new_pairedbins = [] # New bins, representing all possible paths from the left to the right exons of each paired bin
@@ -57,6 +60,10 @@ def get_pairedbins(graph,pairedbins,multibins):
         # The start node and end node for the enumeration has to be determined
         start_exon = left[len(left)-1]
         end_exon = right[0]
+        # If start_node und end_node are directly succeeding no path enumeration has to be carried out
+        if int(end_exon) == int(start_exon)+1:
+            new_bin=BinT(left+right, count=count)
+            continue
         for edgeKey, edgeValue in graph.edges.items():
             if edgeValue['type'] == 'Exon':
                 if edgeValue['exon'] == start_exon:
@@ -69,10 +76,15 @@ def get_pairedbins(graph,pairedbins,multibins):
         # If start exon or end exon is not found, continue with next paired bin     
         if start_node == "" or end_node == "":
             continue
-
+        
         # Path enumeration between left and right exons is carried out to find all possible connections
-        new_pairedbins = path_enumeration.enumeration_bins2(graph,new_pairedbins,start_node,[start_node],[],multibins,end_node,True)
-            
+        invalidPathCounter = []
+        invalidPathCounter.append(0)
+        try:
+            new_pairedbins = path_enumeration.enumeration_bins2(graph,new_pairedbins,start_node,[start_node],[],multibins,end_node,True, maxTranscripts, invalidPathCounter)
+        except RecursionError as re:
+            print('Max recursion depth exceeded for Bin ' + str(pairedbin))
+            continue
         # Bins have to be completed by adding the missing start and end exons
         for i in range(len(new_pairedbins)):
             if len(left) > 1:
