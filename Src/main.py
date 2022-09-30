@@ -1,5 +1,4 @@
-# PACKAGES
-from re import A
+# Packages
 import sys
 import parse_graph_new
 import path_enumeration
@@ -8,13 +7,12 @@ import flowProblem
 import networkx as nx
 import time
 import json
-import matplotlib.pyplot as plt
 from copy import deepcopy
 import optimize
 import os
 import statistics
 
-# GLOBAL VARIABLES
+# Global variables
 start = time.time() # calculate total time needed
 start_gene = time.time() # calculate time needed for one gene
 no_transcripts = [] # total number of transcripts
@@ -35,14 +33,13 @@ pairedBinExceeded = 0 # number of genes where the number of paired bins exceeds 
 no_Exons = [] # list with number of exons per gene
 
 # Additional Options
-# 1. OutputFilename
+# 1. OutputFilename (GTF file)
+gtfFilename = "transcripts.gtf" # default name
 if "-outputGTF" in sys.argv:
     for i in range(len(sys.argv)):
         if sys.argv[i] == "-outputGTF":
             gtfFilename = str(sys.argv[i+1])
             break
-else:    
-    gtfFilename = "transcripts.gtf"
 
 # 2. CostIndex (determined once)
 costFunctionIndex = 1 # default value
@@ -59,14 +56,13 @@ if ("-additionalEdges" in sys.argv):
         if sys.argv[i] == "-additionalEdges":
             maxAdditionalEdgeCount = int(sys.argv[i+1])
 
-# 4. Result FileName
+# 4. Result FileName (CSV file)
+resultsFilename = "results.csv" # default name
 if "-resultsFilename" in sys.argv:
     for i in range(len(sys.argv)):
         if sys.argv[i] == "-resultsFilename":
             resultsFilename = str(sys.argv[i+1])
             break
-else:    
-    resultsFilename = "results.csv"
 
 file_gtf = open(gtfFilename, "w")
 
