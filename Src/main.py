@@ -337,14 +337,13 @@ else:
                 # function to estimate calculation time
                 os.system('clear')
                 print(f"Gene {len(data_dict)} of {num_genes} done.")
+                """
                 end_gene = time.time()
                 time_for_gene = end_gene - start_gene
                 start_gene = time.time()
                 print(f"Time for gene: {time_for_gene:.4f}s")
                 time_left = num_genes - len(data_dict) * time_for_gene
                 print(f"Time left:{time_left // 60 // 60:.0f}h {time_left // 60 % 60:.0f}m {time_left % 60:.0f}s")
-                
-                """
                 #save transcripts and their expression levels
                 with open("save.json", 'w') as file:
                 json.dump(data_dict, file)
