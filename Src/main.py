@@ -87,62 +87,36 @@ if "-maxTranscripts" in sys.argv:
 
 # 6. Lambda and mu
 if ('-opt' not in sys.argv):
-    lambda1=None
-    mu = None
+    factor=None
+    factor=None
 else:
-    if "-lambda" in sys.argv:
+    if "-factor" in sys.argv:
         for i in range(len(sys.argv)):
-            if sys.argv[i] == "-lambda":
-                lambda1 = str(sys.argv[i+1])
+            if sys.argv[i] == "-factor":
+                factor = str(sys.argv[i+1])
                 break
     else: 
         if("-norm0" in sys.argv and "-constr0" in sys.argv):
-            lambda1=0.1
+            factor = 0.1
         elif ("-norm0" in sys.argv and "-constr1" in sys.argv):
-            lambda1 = None
+            factor = 0.05
         elif ("-norm1" in sys.argv and "-constr0" in sys.argv):
-            lambda1 = 10
+            factor = 10
         elif ("-norm1" in sys.argv and "-constr1" in sys.argv):
-            lambda1=None
+            factor= 5
         elif ("-norm2" in sys.argv and "-constr0" in sys.argv):
-            lambda1 = 5
+            factor = 5
         elif ("-norm2" in sys.argv and "-constr1" in sys.argv):
-            lambda1 = None
+            factor = 2.5
         elif ("-norm0" in sys.argv):
-            lambda1 = None
+            factor = None
         elif ("-norm1" in sys.argv):
-            lambda1 = None
+            factor = None
         elif ("-norm2" in sys.argv):
-            lambda1 = None
+            factor = None
         else:
-            lambda1 = None        
+            factor = None        
 
-    if "-mu" in sys.argv:
-        for i in range(len(sys.argv)):
-            if sys.argv[i] == "-mu":
-                mu = str(sys.argv[i+1])
-                break
-    else:
-        if("-norm0" in sys.argv and "-constr0" in sys.argv):
-            mu = None
-        elif ("-norm0" in sys.argv and "-constr1" in sys.argv):
-            mu = 0.05
-        elif ("-norm1" in sys.argv and "-constr0" in sys.argv):
-            mu = None
-        elif ("-norm1" in sys.argv and "-constr1" in sys.argv):
-            mu = 5
-        elif ("-norm2" in sys.argv and "-constr0" in sys.argv):
-            mu = None
-        elif ("-norm2" in sys.argv and "-constr1" in sys.argv):
-            mu = 2.5
-        elif ("-norm0" in sys.argv):
-            mu = None
-        elif ("-norm1" in sys.argv):
-            mu = None
-        elif ("-norm2" in sys.argv):
-            mu = None
-        else:
-            mu = None
 
 # Main
 
@@ -159,8 +133,7 @@ if(sys.argv[1] =="-help"):
     print("-opt for optimization function and to gain expression levels")
     print("--> requires prior specification of enumeration type")
     print("--> specification of norm and sparsity constraint (default values are used otherwise")
-    print("-lambda: Specify penality size for sparsity constraint 0")
-    print("-mu: Specify the maximum number of non-zero transcripts for sparsity contraint 1")
+    print("-factor: Specify penality size for sparsity constraints")
     print("--> example: main.py Test.graph -paired -opt -norm1 -constr0")
     print("--> results are stored in same folder as save.jsn")
     print("-completegraph: Combine with other arguments to use the full graph (cleaned graph is used otherwise)")
@@ -307,17 +280,17 @@ else:
                 if len(transcripts)==0:
                     transcripts = list(nx.all_simple_paths(Graph, '0', '1')) # Use NetworkX build-in method to obtain all possible paths
                 if("-norm0" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L0", sparsity_constr="L0", factor=lambda1)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L0", sparsity_constr="L0", factor=factor)
                 elif ("-norm0" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L0", sparsity_constr="L1", factor=mu)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L0", sparsity_constr="L1", factor=factor)
                 elif ("-norm1" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L1", sparsity_constr="L0", factor=lambda1)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L1", sparsity_constr="L0", factor=factor)
                 elif ("-norm1" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L1", sparsity_constr="L1", factor=mu)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L1", sparsity_constr="L1", factor=factor)
                 elif ("-norm2" in sys.argv and "-constr0" in sys.argv):
-                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L2", sparsity_constr="L0", factor=lambda1)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L2", sparsity_constr="L0", factor=factor)
                 elif ("-norm2" in sys.argv and "-constr1" in sys.argv):
-                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L2", sparsity_constr="L1", factor=mu)
+                    var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L2", sparsity_constr="L1", factor=factor)
                 elif ("-norm0" in sys.argv):
                     var_dict = optimize.model(G_clean=Graph, transcripts=transcripts, norm="L0", sparsity_constr=None, factor=0)
                 elif ("-norm1" in sys.argv):
@@ -603,8 +576,8 @@ metadata[7] = maxTranscripts
 metadata[8] = 1 if '-opt' in sys.argv else 0
 metadata[9] = 0 if '-norm0' in sys.argv else 1 if '-norm1' in sys.argv else 2 if '-norm2' in sys.argv else 1 if '-opt' in sys.argv else -1
 metadata[10] = 0 if '-constr0' in sys.argv else 1 if '-constr1' in sys.argv else -1
-metadata[11] = lambda1
-metadata[12] = mu
+metadata[11] = factor
+metadata[12] = -1
 metadata[13] = 1 if '-flowOptimization' in sys.argv else 0 
 metadata[14] = costFunctionIndex if '-flowOptimization' in sys.argv else -1
 metadata[15] = maxAdditionalEdgeCount if '-flowOptimization' in sys.argv and costFunctionIndex>2 else None
