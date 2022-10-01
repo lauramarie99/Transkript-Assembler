@@ -14,8 +14,8 @@ def cb(model, where):
             model._cur_obj = obj
             model._time = time.time()
 
-    # Terminate if objective has not improved in 20s
-    if time.time() - model._time > 2:
+    # Terminate if objective has not improved in 1s
+    if time.time() - model._time > 1:
         model.terminate()
 
 def model(G_clean, transcripts:list, norm, sparsity_constr, factor:int):
@@ -25,7 +25,7 @@ def model(G_clean, transcripts:list, norm, sparsity_constr, factor:int):
         count = edgeValue["counts"]["c"]
         if edgeValue["type"] == "SpliceJunction" or edgeValue["type"] == "Exon":
             edges_dict[edgeKey] = count
-    # Print(edges_dict)
+    # print(edges_dict)
     edges = list(edges_dict.keys())
 
     # Create Adjazenzmatrix (path,edge): 0/1
