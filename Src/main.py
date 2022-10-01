@@ -66,6 +66,14 @@ if "-resultsFilename" in sys.argv:
 
 file_gtf = open(gtfFilename, "w")
 
+# 4. Json Filename
+jsonFilename = "transcripts.json"
+if ("-jsonFilename" in sys.argv):
+    for i in range(len(sys.argv)):
+        if sys.argv[i] == "-jsonFilename":
+            jsonFilename = str(sys.argv[i+1])
+            break
+
 # # 5. MaximumRecursionDepth
 # if "-maxRecursion" in sys.argv:
 #     for i in range(len(sys.argv)):
@@ -308,9 +316,9 @@ else:
             
 
                 # function to estimate calculation time
+                """
                 os.system('clear')
                 print(f"Gene {len(data_dict)} of {num_genes} done.")
-                """
                 end_gene = time.time()
                 time_for_gene = end_gene - start_gene
                 start_gene = time.time()
@@ -404,6 +412,8 @@ else:
                     # Check if transcript is a single Exon transcript
                     if len(transcript) ==1:
                         numberSingleExonTranscriptsAfterOptimization +=1
+                        print(geneCounter)
+                        print(transcript)
                     # Write GTF-Entry for this transcript
                     parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),str(geneCounter)+"."+str(i+1), "Flow: "+str(optimizedGeneTranscripts[i][1]))
                     #Add transcript and flow as a tuple to data (list)
@@ -442,15 +452,12 @@ else:
 # PRINT RESULTS
 end = time.time()
 
+
 # Write Json-File Name
-if ("-jsonFilename" in sys.argv):
-    for i in range(len(sys.argv)):
-        if sys.argv[i] == "-jsonFilename":
-            jsonFilename = str(sys.argv[i+1])
-    json_object = json.dumps(data_dict)
-    with open(jsonFilename, 'w') as jsonFile:
-        jsonFile.write(json_object)
-        jsonFile.close()
+json_object = json.dumps(data_dict)
+with open(jsonFilename, 'w') as jsonFile:
+    jsonFile.write(json_object)
+    jsonFile.close()
 
 # Collect Data for Analysis
 
