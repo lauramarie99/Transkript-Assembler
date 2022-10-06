@@ -7,3 +7,11 @@ The ***optimize.py*** file is used to solve the optimization problem with gurobi
 The ***flowProblem.py*** file is used to solve the problem using a flow network.
 
 
+# Usage
+
+***$ python main.py [input.graph] [options]***  \
+***python main.py -help*** lists all available options
+
+# Example
+Full path enumeration and optimization with gurobi using L1 norm \
+***$ python main.py human_geuvadis_simulated_5sets.graph -full -opt -norm1***
