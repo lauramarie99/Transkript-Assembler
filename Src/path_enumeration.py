@@ -41,7 +41,7 @@ def get_multibins(bins:list):
 Enumeration function with multi bin constraint.
 The act_bins list is empty at the beginning.
 """
-def enumeration_bins2(graph,transcripts:list,node:str,path:list,act_bins:list,bins:list,endnode:str,transcript:bool, maxTranscripts, invalidPathCounter):
+def enumeration_bins2(graph,transcripts:list,node:str,path:list,act_bins:list,bins:list,endnode:str,transcript:bool, maxTranscripts, invalidPathCounter, NodeList:list):
     if len(transcripts)> int(1e4) and transcript == True:
         return
     if len(transcripts)>maxTranscripts:
@@ -59,6 +59,8 @@ def enumeration_bins2(graph,transcripts:list,node:str,path:list,act_bins:list,bi
         for n in succ:
             if n=='1' and endnode!='1':
                 invalidPathCounter[0]= invalidPathCounter[0] +1 
+                continue
+            if n not in NodeList and transcript == True:
                 continue
             if graph.edges[node,n]['type'] == "SpliceJunction": # if the edge is a splice junction, we will reach a new exon and have to check for compatibility!
                 start_exon = graph.edges[node,n]["startExon"] # start Exon 
@@ -90,7 +92,7 @@ def enumeration_bins2(graph,transcripts:list,node:str,path:list,act_bins:list,bi
 
             # Follow the path
             try:
-                enumeration_bins2(graph,transcripts,n,(path + [n]),new_bins,bins,endnode,transcript, maxTranscripts, invalidPathCounter)          
+                enumeration_bins2(graph,transcripts,n,(path + [n]),new_bins,bins,endnode,transcript, maxTranscripts, invalidPathCounter,[])
             except RecursionError as re:
                 print('Transkript/Bins exceeds max RecursionDepth')
                 return

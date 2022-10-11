@@ -23,6 +23,7 @@ def get_pairedbins(graph,pairedbins,multibins, maxTranscripts):
         right = pairedbin.rightExons # Right exons of paired bin
         count = pairedbin.count # Number of reads found
         invalid = False # Boolean to check if bin is invalid
+        NodeList = []
         
         # CASE 1: The first right exon is smaller than the first left exon
         if left[0] > right[0]:
@@ -68,20 +69,30 @@ def get_pairedbins(graph,pairedbins,multibins, maxTranscripts):
             if edgeValue['type'] == 'Exon':
                 if edgeValue['exon'] == start_exon:
                     start_node = edgeKey[0]
+                    NodeList.append(edgeKey[1])
                 elif edgeValue['exon'] == end_exon:
                     end_node = edgeKey[0]
+                    NodeList.append(end_node)
             if start_node != "" and end_node != "":
                 break
 
         # If start exon or end exon is not found, continue with next paired bin     
         if start_node == "" or end_node == "":
             continue
+
+        #get all Nodes between start and end:
+        if start_node != "" and end_node != "":
+            for edgeKey, edgeValue in graph.edges.items():
+                if edgeValue['type'] == 'Exon':
+                    if edgeValue['exon'] > start_exon and edgeValue['exon'] < end_exon:
+                        NodeList.append(edgeKey[0])
+                        NodeList.append(edgeKey[1])
         
         # Path enumeration between left and right exons is carried out to find all possible connections
         invalidPathCounter = []
         invalidPathCounter.append(0)
         try:
-            new_pairedbins = path_enumeration.enumeration_bins2(graph,new_pairedbins,start_node,[start_node],[],multibins,end_node,True, maxTranscripts, invalidPathCounter)
+            new_pairedbins = path_enumeration.enumeration_bins2(graph,new_pairedbins,start_node,[start_node],[],multibins,end_node,True, maxTranscripts, invalidPathCounter, NodeList)
         except RecursionError as re:
             print('Max recursion depth exceeded for Bin ' + str(pairedbin))
             continue
