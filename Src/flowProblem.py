@@ -312,8 +312,8 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow:int, geneCo
             optimizedTranscripts.append((transcript, minFlow))
 
     elif decomposition_option == 'maximumFlow':
-        topologicalOrder = list(nx.topological_sort(graph))
         while(flow!=0):        
+            topologicalOrder = list(nx.topological_sort(graph))
             #Forward 
             maxFlowDict = {}
             for key in graph.edges.keys():
@@ -321,7 +321,10 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow:int, geneCo
             for v in topologicalOrder:
                 if v=='0':
                     continue
-                maxPreFlow = max(maxFlowDict[(x,v)] for x in graph.predecessors(v))
+                if len(list(graph.predecessors(v)))!=0:
+                    maxPreFlow = max(maxFlowDict[(x,v)] for x in graph.predecessors(v))
+                else:
+                    maxPreFlow = 0
                 for u in list(graph.adj[v]):
                     maxFlowDict[(v,u)] = min(maxFlowDict[(v,u)], maxPreFlow)
                 if v=='1':
@@ -353,6 +356,8 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow:int, geneCo
                 # Eliminate edges with minimal flow
                 for i in range(len(transcript)-1):
                     graph.edges[transcript[i], transcript[i+1]]['counts']['c'] = graph.edges[transcript[i], transcript[i+1]]['counts']['c'] - minMaxFlow
+                    if graph.edges[transcript[i], transcript[i+1]]['counts']['c'] == 0:
+                        graph.remove_edge(transcript[i], transcript[i+1])
                 flow = flow - minMaxFlow  
     return (optimizedTranscripts, flow)
 
