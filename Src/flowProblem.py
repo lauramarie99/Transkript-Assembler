@@ -145,7 +145,7 @@ def writeGStarQuadratic(graph:dict, costIndex:int, maxAdditionalEdgeCount, geneC
             for i in range(0, min(coverage, maxAdditionalEdgeCount)):
                 edgeCounter +=1
                 graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = x, weight=int(scalingFactor*(costFunction(i, x, coverage, costIndex, length, type)))) # Add backward edges with capacity x and costFunction    
-    
+
     # Not recommended Costfunctions because of heavy computation time
         # Costfunction 6: f(x) = x^2 (modeled as ((i+1)^2-i^2) 
         # Costfunction 7: f(x) = x^2 (modelled as x(x+1)/2) 
