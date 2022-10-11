@@ -113,9 +113,9 @@ else:
         elif ("-norm1" in sys.argv and "-constr1" in sys.argv):
             factor= 5
         elif ("-norm2" in sys.argv and "-constr0" in sys.argv):
-            factor = 5
+            factor = 100
         elif ("-norm2" in sys.argv and "-constr1" in sys.argv):
-            factor = 2.5
+            factor = 50
         elif ("-norm0" in sys.argv):
             factor = None
         elif ("-norm1" in sys.argv):
