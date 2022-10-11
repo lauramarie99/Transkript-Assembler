@@ -79,17 +79,17 @@ do
 
 				if [ "$value" = "TLLP" ] || [ "$value" = "TLMF" ]
                                 then
-					echo python main.py $fileName".gtf" -full -flowOptimization -$value -costFunction $i -jsonFilename $outputFileName".json" -resultsFilename ../Results/results.csv
-					python main.py $fileName".gtf" -full -flowOptimization -$value -costFunction $i -jsonFilename $outputFileName".json" -resultsFilename ../Results/results.csv
+					echo python main.py $fileName".gtf" -full -flowOptimization -$value -costFunction $i -jsonFilename $outputFileName".json" -resultsFilename ../Results/resultsWP3.csv
+					python main.py $fileName".gtf" -full -flowOptimization -$value -costFunction $i -jsonFilename $outputFileName".json" -resultsFilename ../Results/resultsWP3.csv
                                         
                                 else
-					echo  python main.py $fileName".gtf" -flowOptimization -$value -costFunction $i -jsonFilename $outputFileName".json" -resultsFilename ../Results/results.csv
-					python main.py $fileName".gtf" -flowOptimization -$value -costFunction $i -jsonFilename $outputFileName".json" -resultsFilename ../Results/results.csv
+					echo  python main.py $fileName".gtf" -flowOptimization -$value -costFunction $i -jsonFilename $outputFileName".json" -resultsFilename ../Results/resultsWP3.csv
+					python main.py $fileName".gtf" -flowOptimization -$value -costFunction $i -jsonFilename $outputFileName".json" -resultsFilename ../Results/resultsWP3.csv
                                 fi
                                 conda deactivate
                                 mv $outputFileName".json" ../Results/WP3/$fileName/$value/CostFunction$i
                                 conda activate Cufflinks
-                                sh compareGTF_GTF.sh $gtfFileName transcripts.gtf >> ../Results/results.csv
+                                sh compareGTF_GTF.sh $gtfFileName transcripts.gtf >> ../Results/resultsWP3.csv
                                 conda deactivate
                                 mv r.* ../Results/WP3/$fileName/$value/CostFunction$i
                                 mv transcripts.gtf ../Results/WP3/$fileName/$value/CostFunction$i/$outputFileName"_transcripts.gtf"
@@ -102,16 +102,16 @@ do
                                         conda activate TranscriptReconstruction
                                         if [ "$value" = "TLLP" ] || [ "$value" = "TLMF" ]
                                 	then
-						echo "python main.py $fileName".gtf" -flowOptimization -full -$value -costFunction $i -additionalEdges $edgeCount -jsonFilename $outputFileName".json" -resultsFilename ../Results/results.csv"
-						python main.py $fileName".gtf" -flowOptimization -full -$value -costFunction $i -additionalEdges $edgeCount -jsonFilename $outputFileName".json" -resultsFilename ../Results/results.csv
+						echo "python main.py $fileName".gtf" -flowOptimization -full -$value -costFunction $i -additionalEdges $edgeCount -jsonFilename $outputFileName".json" -resultsFilename ../Results/resultsWP3.csv"
+						python main.py $fileName".gtf" -flowOptimization -full -$value -costFunction $i -additionalEdges $edgeCount -jsonFilename $outputFileName".json" -resultsFilename ../Results/resultsWP3.csv
                                         else
-						echo "python main.py $fileName".gtf" -flowOptimization -$value -costFunction $i -additionalEdges $edgeCount -jsonFilename $outputFileName".json" -resultsFilename ../Results/results.csv"
-                                                python main.py $fileName".gtf" -flowOptimization -$value -costFunction $i -additionalEdges $edgeCount -jsonFilename $outputFileName".json" -resultsFilename ../Results/results.csv
+						echo "python main.py $fileName".gtf" -flowOptimization -$value -costFunction $i -additionalEdges $edgeCount -jsonFilename $outputFileName".json" -resultsFilename ../Results/resultsWP3.csv"
+                                                python main.py $fileName".gtf" -flowOptimization -$value -costFunction $i -additionalEdges $edgeCount -jsonFilename $outputFileName".json" -resultsFilename ../Results/resultsWP3.csv
 					fi
 					conda deactivate
                                         mv $outputFileName".json" ../Results/WP3/$fileName/$value/CostFunction$i/$edgeCount
                                         conda activate Cufflinks
-                                        sh compareGTF_GTF.sh $gtfFileName transcripts.gtf >> ../Results/results.csv
+                                        sh compareGTF_GTF.sh $gtfFileName transcripts.gtf >> ../Results/resultsWP3.csv
                                         conda deactivate
                                         mv r* ../Results/WP3/$fileName/$value/CostFunction$i/$edgeCount
                                         mv transcripts.gtf ../Results/WP3/$fileName/$value/CostFunction$i/$edgeCount/$outputFileName"_transcripts.gtf"
