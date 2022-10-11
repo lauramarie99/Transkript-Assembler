@@ -141,10 +141,10 @@ def writeGStarQuadratic(graph:dict, costIndex:int, maxAdditionalEdgeCount, geneC
             x = int(max(1, math.floor(coverage/maxAdditionalEdgeCount))) # Stepsize for Backwardedges
             for i in range(0,(min(sourceDemand, maxAdditionalEdgeCount))):
                 edgeCounter +=1
-                graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = y, weight=int(scalingFactor*(costFunction(y*i, y, coverage, costIndex, length, type)))) # Add Forward edge with capacity y and weight = costFunction
+                graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = y, weight=int(scalingFactor*(costFunction(i, y, coverage, costIndex, length, type)))) # Add Forward edge with capacity y and weight = costFunction
             for i in range(0, min(coverage, maxAdditionalEdgeCount)):
                 edgeCounter +=1
-                graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = x, weight=int(scalingFactor*(costFunction(x*i, x, coverage, costIndex, length, type)))) # Add backward edges with capacity x and costFunction    
+                graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = x, weight=int(scalingFactor*(costFunction(i, x, coverage, costIndex, length, type)))) # Add backward edges with capacity x and costFunction    
     
     # Not recommended Costfunctions because of heavy computation time
         # Costfunction 6: f(x) = x^2 (modeled as ((i+1)^2-i^2) 
