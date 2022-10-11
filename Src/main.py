@@ -419,7 +419,6 @@ else:
             # Write entry for Gene with list of transcripts and expression levels/flow
             data_dict[geneCounter] = data
             geneCounter = geneCounter + 1
-            print(geneCounter)
 
 # PRINT RESULTS
 end = time.time()
