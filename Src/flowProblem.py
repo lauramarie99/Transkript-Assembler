@@ -329,7 +329,6 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow:int, geneCo
                 # Eliminate edges with minimal flow
                 for i in range(len(transcript)-1):
                     graph.edges[transcript[i], transcript[i+1]]['counts']['c'] = graph.edges[transcript[i], transcript[i+1]]['counts']['c'] - minMaxFlow
-                flow = flow - minMaxFlow
-  
+                flow = flow - minMaxFlow  
     return (optimizedTranscripts, flow)
 
