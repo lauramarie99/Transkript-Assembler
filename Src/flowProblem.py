@@ -152,19 +152,19 @@ def writeGStarQuadratic(graph:dict, costIndex:int, maxAdditionalEdgeCount, geneC
             # y = int(max(1,math.ceil(sourceDemand/maxAdditionalEdgeCount))) # Stepsize for ForwardEdges
             # x = int(max(1, math.ceil(coverage/maxAdditionalEdgeCount))) # Stepsize for Backwardedges
             # for i in range(0,(min(sourceDemand, maxAdditionalEdgeCount))):
-            #     if i*y +y <= sourceDemand:
+            #     if (i+1)*y +y <= sourceDemand:
             #         edgeCounter +=1
             #         graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = y, weight=int(scalingFactor*(costFunction(i, y, coverage, costIndex, length, type)))) # Add Forward edge with capacity y and weight = costFunction
-            #         if i*y +y == sourceDemand:
+            #         if (i+1)*y +y == sourceDemand:
             #             break
             #     else:
             #         graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = sourceDemand - y*i, weight=int(scalingFactor*(costFunction(i, sourceDemand - y*i, coverage, costIndex, length, type)))) # Add Forward edge with capacity y and weight = costFunction
             #         break
             # for i in range(0, min(coverage, maxAdditionalEdgeCount)):
-            #     if i*x + x <= coverage:
+            #     if (i+1)*x + x <= coverage:
             #         edgeCounter +=1
             #         graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = x, weight=int(scalingFactor*(costFunction(i, x, coverage, costIndex, length, type)))) # Add backward edges with capacity x and costFunction    
-            #         if i*x + x == coverage:
+            #         if (i+1)*x + x == coverage:
             #             break
             #     else:
             #         graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = coverage -x*i, weight=int(scalingFactor*(costFunction(i, coverage-x*i, coverage, costIndex, length, type)))) # Add backward edges with capacity x and costFunction    
