@@ -122,6 +122,7 @@ def writeGStarQuadratic(graph:dict, costIndex:int, maxAdditionalEdgeCount, geneC
     # CostFunction 3: f(x) = x^2 modelled as ((i+x)*(i+x) - i*i)/x; 
     # CostFunction 4: f(x) = x^2/cov(u,v) modelled as ((i+x)*(i+x) - i*i)/(x*cov(u,v))
     # CostFunction 5: f(x( = x^2 * length(u,v)/cov(u,v) modelled as ((i+x)*(i+x) - i*i)*length(u,v)/(x*cov(u,v))
+
     edgeCounter = 0 
     if costIndex <6:
         for edgeKey, edgeValue in graph.edges.items():    
@@ -144,11 +145,12 @@ def writeGStarQuadratic(graph:dict, costIndex:int, maxAdditionalEdgeCount, geneC
             for i in range(0, min(coverage, maxAdditionalEdgeCount)):
                 edgeCounter +=1
                 graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = x, weight=int(scalingFactor*(costFunction(i, x, coverage, costIndex, length, type)))) # Add backward edges with capacity x and costFunction    
-            #graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = sourceDemand, weight=int(scalingFactor*(costFunction(i, sourceDemand, coverage, costIndex, length, type)))) # Add Forward edge with capacity sourceDemand and weight = costFunction 
+    
     # Not recommended Costfunctions because of heavy computation time
-    # Costfunction 6: f(x) = x^2 (modeled as ((i+1)^2-i^2) 
-    # Costfunction 7: f(x) = x^2 (modelled as x(x+1)/2) 
-    # Costfunction 8: f(x) = x^2/cov(u,v) modelled as x(x+1)/2)/cov(u,v) 
+        # Costfunction 6: f(x) = x^2 (modeled as ((i+1)^2-i^2) 
+        # Costfunction 7: f(x) = x^2 (modelled as x(x+1)/2) 
+        # Costfunction 8: f(x) = x^2/cov(u,v) modelled as x(x+1)/2)/cov(u,v) 
+
     else: 
         scalingFactor=1
         if costIndex == 8:
@@ -217,7 +219,7 @@ def flowDecompositionWithTranscriptlist(graph:dict, transcriptsCopy:list, decomp
     optimizedTranscripts = []
     # Compute FlowDecomposition by removing the flow of the longest path from the transcript list
     if decomposition_option == 'longestPath': 
-        while (flow>0 and len(transcriptsCopy)>0): 
+        while (flow!=0 and len(transcriptsCopy)>0): 
             longestPath = transcriptsCopy[transcriptsCopy.index(max(transcriptsCopy, key=len))] # get longest Path from transcriptsCopy List
             minFlow = min(graph.edges[longestPath[i], longestPath[i+1]]['counts']['c'] for i in range(len(longestPath)-1)) # Define minimal flow on this path = pathFlow
             if flow - minFlow >= 0 and minFlow>0: # If removal of this flow results in non-negative flow
@@ -226,30 +228,24 @@ def flowDecompositionWithTranscriptlist(graph:dict, transcriptsCopy:list, decomp
                 flow = flow - minFlow # reduce TotalFlow by pathFlow
                 optimizedTranscripts.append((longestPath, minFlow)) # Add path to optimized TranscriptList
             transcriptsCopy.remove(longestPath) # Remove path from transcriptsCopy
-        #print('flowDecompositionWithTranscriptlist and longestPath ' + str(flow))
     
     # Compute FlowDecomposition by removing the flow of the path with maximumFlow from the transcript list
     elif decomposition_option == 'maximumFlow':
-        while (flow>0 and len(transcriptsCopy)>0):
+        while (flow!=0 and len(transcriptsCopy)>0):
             maxFlow = 0 # set maxFlow to 0
             maxFlowPath = [] # define new List with maxFlowPath
-            flowCounter = 0 # define new FlowCounter
             for transcript in transcriptsCopy:
                 # Read the minimum flow for every path of trancsriptsCopy 
                 minFlow = min(graph.edges[transcript[i], transcript[i+1]]['counts']['c'] for i in range(len(transcript)-1)) 
                 if minFlow > maxFlow: # if it's bigger than the already found flow -> overwrite it
                     maxFlow = minFlow 
                     maxFlowPath = transcript
-                    flowCounter = 1
-            if flowCounter == 0: # break if there's no transcript with higher flow break from while loop to prevent stucking in a endless circle
-                break
             if ((flow - maxFlow) >= 0) and flow>0: # if the remaining total flow is non-negative remove this flow and add the path to optimized transcripts  
                 for i in range(len(maxFlowPath)-1):
                     graph.edges[maxFlowPath[i], maxFlowPath[i+1]]['counts']['c'] = graph.edges[maxFlowPath[i], maxFlowPath[i+1]]['counts']['c'] - maxFlow
                 flow = flow - maxFlow
                 optimizedTranscripts.append((maxFlowPath, maxFlow))
             transcriptsCopy.remove(maxFlowPath) # remove path from the transcriptList in any case 
-        #print('flowDecompositionWithTranscriptlist and maxFlow ' + str(flow))
     else:
         print('Error, please specify decomposition option.')
         os.exit()
@@ -264,8 +260,6 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow:int, geneCo
             queue = [] # Initialize Queue
             queue.append('0') # Append first Item
             longestPathDict['0'] = (None, 0) # Set length of source to successors to 1
-            # for u in list(graph.adj['0']):
-            #     queue.append(u) # append all successors of source node to the queue
             queue = [] # Initialize PriorityQueue
             for v in list(nx.topological_sort(graph)):
                 length=-1
@@ -293,63 +287,13 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow:int, geneCo
             flow = flow - minFlow
             optimizedTranscripts.append((transcript, minFlow))
 
-        #print('flowDecompositionDP with longestPath and residualFlow = ' + str(flow))
-        
-
-        #2. With Numpy Array
-
-        # while(flow>0):
-        #     # Forward
-        #     n = max(int(node) for node in list(graph.nodes()))+1 # Define length of matrix
-        #     DP = np.zeros((n,n), dtype=int) # Initialize Matrix
-        #     queue = [] # Initialize Queue
-        #     queue.append('0') # Append first Item
-        #     v = queue.pop(0) # Pop item an read first item
-        #     succ = list(graph.adj[v]) # List all successors of source
-        #     # Use breadth first search (BSF) for visiting all nodes
-        #     for u in succ:  
-        #         DP[int(v)][int(u)] = 1 # Set length of source to successors to 1
-        #         queue.append(u) # append all successors of source node to the queue
-        #     while(len(queue)>0):
-        #         v = queue.pop(0) # Get first item of the queue
-        #         succ = list(graph.adj[v]) # list all succesors of v
-        #         for u in succ:  
-        #             DP[int(v)][int(u)] = max(DP[int(x)][int(v)] for x in graph.predecessors(v)) + 1 # extend the longest path including v by 1 
-        #             queue.append(u) # append all sucessors of v to the queue
-
-        #     # Backtracking
-        #     transcript = []
-        #     maxIndex = np.argmax(DP, axis=0)[1]
-        #     length = DP[maxIndex][1]
-        #     transcript.append('1')
-        #     while(length>0):
-        #         v = maxIndex
-        #         transcript.append(str(maxIndex))
-        #         maxIndex = np.argmax(DP, axis=0)[v]
-        #         length = DP[maxIndex][v]
-        #     transcript.reverse()
-        #     print(transcript)
-            
-        #     # Eliminate edges with minimal flow
-        #     minFlow = min(graph.edges[transcript[i], transcript[i+1]]['counts']['c'] for i in range(len(transcript)-1)) # Define minFlow
-        #     for i in range(len(transcript)-1):
-        #         graph.edges[transcript[i], transcript[i+1]]['counts']['c'] = graph.edges[transcript[i], transcript[i+1]]['counts']['c'] - minFlow 
-        #         if graph.edges[transcript[i], transcript[i+1]]['counts']['c'] == 0:
-        #             graph.remove_edge(transcript[i], transcript[i+1])
-        #     flow = flow - minFlow
-        #     optimizedTranscripts.append((transcript, minFlow))
-        # print('flowDecompositionDP with longestPath and residualFlow = ' + str(flow))
-
     elif decomposition_option == 'maximumFlow':
         topologicalOrder = list(nx.topological_sort(graph))
-        #1.1 MaxFlowDictionary
         while(flow!=0):        
             #Forward 
             maxFlowDict = {}
-            #Initializing
             for key in graph.edges.keys():
                 maxFlowDict[key] = graph.edges[key]['counts']['c']
-            queue = [] # Initialize PriorityQueue
             for v in topologicalOrder:
                 if v=='0':
                     continue
@@ -360,6 +304,7 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow:int, geneCo
                     break
             if max(maxFlowDict[(x,'1')] for x in graph.predecessors('1')) == 0:
                 break
+
             # Backtracking
             else:
                 transcript = []
@@ -379,91 +324,12 @@ def flowDecompositionDP (graph: dict, decomposition_option:str, flow:int, geneCo
                             maxIndex = x
                     transcript.append(str(maxIndex))
                 transcript.reverse()
-                #print(transcript)
                 optimizedTranscripts.append((transcript, minMaxFlow))
                 
                 # Eliminate edges with minimal flow
                 for i in range(len(transcript)-1):
-                    graph.edges[transcript[i], transcript[i+1]]['counts']['c'] = graph.edges[transcript[i], transcript[i+1]]['counts']['c'] - minMaxFlow 
-                    # if graph.edges[transcript[i], transcript[i+1]]['counts']['c'] == 0:
-                    #     graph.remove_edge(transcript[i], transcript[i+1])
+                    graph.edges[transcript[i], transcript[i+1]]['counts']['c'] = graph.edges[transcript[i], transcript[i+1]]['counts']['c'] - minMaxFlow
                 flow = flow - minMaxFlow
-        #print('flowDecompositionDP with maximumFlow and residualFlow = ' + str(flow))
-
-    # 2. Use Numpy Array and calculate matrix every time newly
-        
-        # while(flow>0):        
-        #     # Forward 
-        #     n = max(int(node) for node in list(graph.nodes()))+1
-        #     DP = np.zeros((n,n), dtype=int) # Initialize DP - Matrix
-        #     queue = [] # Initialize PriorityQueue
-        #     for u in list(graph.adj['0']):
-        #         DP[0][int(u)]= graph.edges['0', u]['counts']['c']
-        #         queue.append(u)
-        #     while(len(queue)>0):
-        #         v = queue.pop(0)
-        #         maxPreFlow = max(DP[int(x)][int(v)] for x in graph.predecessors(v))
-        #         for u in list(graph.adj[v]):
-        #             DP[int(v)][int(u)] = min(graph.edges[v,u]['counts']['c'], maxPreFlow)
-        #             queue.append(u)
-        #     if max(DP[x][1] for x in range(len(DP)))==0:
-        #         break 
-        #     else:
-        #         # Backtracking
-        #         transcript = []
-        #         transcript.append('1')
-        #         maxFlow = max(DP[int(x)][1] for x in graph.predecessors('1'))
-        #         maxIndex = np.argmax(DP, axis=0)[1]
-        #         transcript.append(str(maxIndex))
-        #         while(maxIndex!=0):
-        #             maxIndex = np.argmax(DP, axis=0)[maxIndex]
-        #             transcript.append(str(maxIndex))
-        #         transcript.reverse()
-        #         optimizedTranscripts.append((transcript, maxFlow))
-                
-        #         # Eliminate edges with minimal flow
-        #         for i in range(len(transcript)-1):
-        #             graph.edges[transcript[i], transcript[i+1]]['counts']['c'] = graph.edges[transcript[i], transcript[i+1]]['counts']['c'] - maxFlow 
-        #             if graph.edges[transcript[i], transcript[i+1]]['counts']['c'] == 0:
-        #                 graph.remove_edge(transcript[i], transcript[i+1])
-        #         flow = flow - maxFlow
-        #         #print(transcript)
-        # if flow>0:
-        #     print(DP)
-        # print('flowDecompositionDP with maximumFlow and residualFlow = ' + str(flow))
-
-    # 3. Fill Matrix only once and perform backtracking in this matrix
-
-        # n = max(int(node) for node in list(graph.nodes()))+1
-        # DP = np.zeros((n,n), dtype=int) # Initialize DP - Matrix
-        # queue = [] # Initialize PriorityQueue
-        # queue.append('0') # Add source to Priority Queue 
-        # while(len(queue)>0): # Fill DP-Matrix
-        #     v = queue.pop(0) 
-        #     for u in list(graph.adj[v]):
-        #         queue.append(u)
-        #         DP[int(v)][int(u)] = graph.edges[v,u]['counts']['c']
-        
-        # Backtracing
-        # while(flow>0):
-        #     transcript = []
-        #     transcript.append('1')
-        #     maxFlow = max(DP[int(x)][1] for x in graph.predecessors('1'))
-        #     maxIndex = np.argmax(DP, axis=0)[1]
-        #     transcript.append(str(maxIndex))
-        #     while(maxIndex!=0):
-        #         edgeFlow =max(DP[int(x)][maxIndex] for x in graph.predecessors(str(maxIndex)))
-        #         if edgeFlow < maxFlow:
-        #             maxFlow = edgeFlow
-        #         maxIndex = np.argmax(DP, axis=0)[maxIndex]
-        #         transcript.append(str(maxIndex))
-        #     transcript.reverse()
-        #     optimizedTranscripts.append(transcript)
-            
-        #     # Update DP-Matrix with reduced flow
-        #     for i in range(len(transcript)-1):
-        #         DP[int(transcript[i])][int(transcript[i+1])] = DP[int(transcript[i])][int(transcript[i+1])] - maxFlow
-        #     flow = flow - maxFlow
-
+  
     return (optimizedTranscripts, flow)
 

@@ -74,17 +74,6 @@ if ("-jsonFilename" in sys.argv):
             jsonFilename = str(sys.argv[i+1])
             break
 
-# # 5. MaximumRecursionDepth
-# if "-maxRecursion" in sys.argv:
-#     for i in range(len(sys.argv)):
-#         if sys.argv[i] == "-maxRecursion":
-#             maxRecursionDepth = str(sys.argv[i+1])
-#             break
-# else:
-#     maxRecursionDepth = 1000
-# #Set maximum recursion depth
-# sys.setrecursionlimit(maxRecursionDepth)
-
 # 5. MaxTranscripts
 maxTranscripts = int(1e4) # default value
 if "-maxTranscripts" in sys.argv:
@@ -334,63 +323,48 @@ else:
                 
                 # Get transcripts
                 if ("-TLLP" in sys.argv or "-TLMF" in sys.argv):
+                    # Use NetworkX build-in method to obtain all possible paths, if -full is e. g. not specified
                     if len(transcripts)==0:
-                        if geneCounter ==8182:
-                            print('Trying to establish all paths with NetworkX.')
-                # Use NetworkX build-in method to obtain all possible paths
                         transcripts = list(nx.all_simple_paths(Graph, '0', '1'))
+                # Make Copy of transcripts and Graph
                 transcriptsCopy = deepcopy(transcripts)
-
                 graphCopy = deepcopy(Graph)
-                optimizedTranscripts = []
-                        
-                #print('CostFunctionIndex = ' + str(costFunctionIndex))
-                skipOptimization = False
-                
+
                 # Catch infeasible models or models that are unbounded below
+                skipOptimization = False
                 try:
                     g_Star, newGraph, flow = flowProblem.writeGStar(Graph, costFunctionIndex, maxAdditionalEdgeCount, geneCounter)
                     if g_Star == 0:
                         skipOptimization = True    
                 except nx.NetworkXUnfeasible or nx.NetworkXUnbounded:
                     skipOptimization = True
-                    print('Infeasible Model')
+                    print('Infeasible Model or model unbounded below')
                 
                 # Execute specified option
                 if not skipOptimization:
                     # Get transcripts
                     if "-TLLP" in sys.argv:
                         optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcriptsCopy, 'longestPath', flow)
-                        optimizedTranscripts.append(optimizedGeneTranscripts)
                         if residualFlow > 0:
                             residualFlowList.append(geneCounter)
                             print('Residual Flow:' + str(residualFlow) + 'left')
                     elif "-TLMF" in sys.argv:
                         optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcriptsCopy, 'maximumFlow', flow)
-                        optimizedTranscripts.append(optimizedGeneTranscripts)
                         if residualFlow > 0:
                             residualFlowList.append(geneCounter)
                             print('Residual Flow:' + str(residualFlow) + 'left')
                     elif "-DPLP" in sys.argv:
                         optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionDP(newGraph, 'longestPath', flow, geneCounter)
-                        optimizedTranscripts.append(optimizedGeneTranscripts)
                         if residualFlow > 0:
                             residualFlowList.append(geneCounter)
                             print('Residual Flow:' + str(residualFlow) + 'left')
                     elif "-DPMF" in sys.argv:
                         optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionDP(newGraph, 'maximumFlow', flow, geneCounter)
-                        optimizedTranscripts.append(optimizedGeneTranscripts)
                         if residualFlow > 0:
                             residualFlowList.append(geneCounter)
                             print('Residual Flow:' + str(residualFlow) + 'left')
                     else: 
                         optimizedGeneTranscripts, residualFlow = flowProblem.flowDecompositionWithTranscriptlist(newGraph, transcripts, 'longestPath', flow)
-                        optimizedTranscripts.append(optimizedGeneTranscripts)
-                if len(optimizedGeneTranscripts) == 0:
-                    print('Gene ' +str(geneCounter) + ' exceeded max length of queue in DP')
-                    numberGenesFailedOpt += 1
-                    genesFailedOpt.append(geneCounter)
-                    geneCounter += 1
 
             if int(geneCounter/num_genes*100)>= percentageCounter:
                 print(f"{percentageCounter}  % finished")
@@ -412,8 +386,6 @@ else:
                     # Check if transcript is a single Exon transcript
                     if len(transcript) ==1:
                         numberSingleExonTranscriptsAfterOptimization +=1
-                        print(geneCounter)
-                        print(transcript)
                     # Write GTF-Entry for this transcript
                     parse_graph_new.write_valid_gtf_entry(file_gtf,Chromosome,Strand,Exons,transcript,"Gene"+str(geneCounter),str(geneCounter)+"."+str(i+1), "Flow: "+str(optimizedGeneTranscripts[i][1]))
                     #Add transcript and flow as a tuple to data (list)
@@ -447,7 +419,7 @@ else:
             # Write entry for Gene with list of transcripts and expression levels/flow
             data_dict[geneCounter] = data
             geneCounter = geneCounter + 1
-            
+            print(geneCounter)
 
 # PRINT RESULTS
 end = time.time()
