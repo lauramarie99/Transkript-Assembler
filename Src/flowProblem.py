@@ -137,6 +137,7 @@ def writeGStarQuadratic(graph:dict, costIndex:int, maxAdditionalEdgeCount, geneC
             else:
                 scalingFactor = 10e7 
             maxAdditionalEdgeCount = min(100, int(math.ceil(25000/(len(graph.edges())))))
+            
             # Calculate necessary stepSize (y and x) for each forward and backward edge to achieve at maximum maxAdditionalEdgeCount edges 
             # y = int(max(1,math.floor(sourceDemand/maxAdditionalEdgeCount))) # Stepsize for ForwardEdges
             # x = int(max(1, math.floor(coverage/maxAdditionalEdgeCount))) # Stepsize for Backwardedges
@@ -192,6 +193,7 @@ def writeGStarQuadratic(graph:dict, costIndex:int, maxAdditionalEdgeCount, geneC
                 print('Residual capacity for backward edge = ' + str(capacity))
             if maxCost !=0:
                 print('Residual cost for backward edge = ' + str(maxCost))
+                
     # Not recommended Costfunctions because of heavy computation time
         # Costfunction 6: f(x) = x^2 (modeled as ((i+1)^2-i^2) 
         # Costfunction 7: f(x) = x^2 (modelled as x(x+1)/2) 
