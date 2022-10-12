@@ -252,7 +252,7 @@ else:
                 invalidPathCounter = []
                 invalidPathCounter.append(0)
                 try:
-                    transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],multi_bins,"1",False, maxTranscripts, invalidPathCounter,[])
+                    transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],multi_bins,"1",False, maxTranscripts, invalidPathCounter, [])
                 except RecursionError as re:
                     recursionExceededCounter +=1
                     print(str(geneCounter) + ' exceeded maxRecursionNumber.')
@@ -418,6 +418,7 @@ else:
                 no_optimizedTranscripts.append(number_optimizedTranscripts)
             # Write entry for Gene with list of transcripts and expression levels/flow
             data_dict[geneCounter] = data
+            print('Gene ' + str(geneCounter))
             geneCounter = geneCounter + 1
 
 # PRINT RESULTS
