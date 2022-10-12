@@ -3,7 +3,6 @@ from xmlrpc.client import Transport
 import gurobipy as gp
 from gurobipy import GRB
 import networkx as nx
-from copy import deepcopy
 import math
 import sys, os
 import numpy as np
@@ -165,7 +164,7 @@ def writeGStarQuadratic(graph:dict, costIndex:int, maxAdditionalEdgeCount, geneC
                         break
                 else:
                     lastCapacity = sourceDemand - y*i
-                    graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = lastCapacity, weight=int(scalingFactor*(costFunction(i*y, lastCapacity, coverage, costIndex, length, type)))) # Add Forward edge with capacity y and weight = costFunction
+                    graphStar.add_edge(edgeKey[0], edgeKey[1], capacity = lastCapacity, weight=int(scalingFactor*(costFunction(y*i, lastCapacity, coverage, costIndex, length, type)))) # Add Forward edge with capacity y and weight = costFunction
                     capacity = capacity-lastCapacity
                     maxCost = maxCost - ((i*y+lastCapacity)*(i*y+lastCapacity) - (i*y)*(i*y))
                     break
@@ -185,7 +184,7 @@ def writeGStarQuadratic(graph:dict, costIndex:int, maxAdditionalEdgeCount, geneC
                         break
                 else:
                     lastCapacity = coverage - x*i
-                    graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = lastCapacity, weight=int(scalingFactor*(costFunction(i*x, lastCapacity, coverage, costIndex, length, type)))) # Add backward edges with capacity x and costFunction    
+                    graphStar.add_edge(edgeKey[1], edgeKey[0], capacity = lastCapacity, weight=int(scalingFactor*(costFunction(x*i, lastCapacity, coverage, costIndex, length, type)))) # Add backward edges with capacity x and costFunction    
                     capacity = capacity-lastCapacity
                     maxCost = maxCost - ((i*x + lastCapacity)*(i*x + lastCapacity) - (i*x)*(i*x))
                     break
@@ -193,7 +192,7 @@ def writeGStarQuadratic(graph:dict, costIndex:int, maxAdditionalEdgeCount, geneC
                 print('Residual capacity for backward edge = ' + str(capacity))
             if maxCost !=0:
                 print('Residual cost for backward edge = ' + str(maxCost))
-                
+
     # Not recommended Costfunctions because of heavy computation time
         # Costfunction 6: f(x) = x^2 (modeled as ((i+1)^2-i^2) 
         # Costfunction 7: f(x) = x^2 (modelled as x(x+1)/2) 
