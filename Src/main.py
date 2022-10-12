@@ -219,7 +219,7 @@ else:
                 invalidPathCounter = []
                 invalidPathCounter.append(0)
                 try:
-                    transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],multi_bins,"1",False, maxTranscripts, invalidPathCounter)
+                    transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],multi_bins,"1",False, maxTranscripts, invalidPathCounter, [])
                 except RecursionError as re:
                     recursionExceededCounter +=1
                     print(str(geneCounter) + ' exceeded maxRecursionNumber with.')
@@ -252,7 +252,7 @@ else:
                 invalidPathCounter = []
                 invalidPathCounter.append(0)
                 try:
-                    transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],multi_bins,"1",False, maxTranscripts, invalidPathCounter)
+                    transcripts = path_enumeration.enumeration_bins2(Graph,[],"0",["0"],[],multi_bins,"1",False, maxTranscripts, invalidPathCounter,[])
                 except RecursionError as re:
                     recursionExceededCounter +=1
                     print(str(geneCounter) + ' exceeded maxRecursionNumber.')
