@@ -8,13 +8,13 @@ import sys, os
 import numpy as np
 import scipy as sp
 
-def writeGStar(graph:dict, costIndex:int, maxAdditionalEdgeCount:int, geneCounter):
+def writeGStar(graph:dict, costIndex:int, maxAdditionalEdgeCount:int):
     if costIndex<=2:
-        return writeGStarLinear(graph, costIndex, geneCounter)
+        return writeGStarLinear(graph, costIndex)
     else:
-        return writeGStarQuadratic(graph, costIndex, maxAdditionalEdgeCount, geneCounter)
+        return writeGStarQuadratic(graph, costIndex, maxAdditionalEdgeCount)
 
-def writeGStarLinear(graph:dict, costIndex:int, geneCounter):
+def writeGStarLinear(graph:dict, costIndex:int):
     graphStar = nx.DiGraph() # Define new Graph
     graphStar.add_nodes_from(graph.nodes.keys()) # Add all nodes from the original Graph
     graphStar.add_node('s0') # Add s0
@@ -76,7 +76,7 @@ def writeGStarLinear(graph:dict, costIndex:int, geneCounter):
         flow = flow + edge[2]['counts']['c']
     return(graphStar, graph, flow)    
 
-def writeGStarQuadratic(graph:dict, costIndex:int, maxAdditionalEdgeCount, geneCounter):
+def writeGStarQuadratic(graph:dict, costIndex:int, maxAdditionalEdgeCount):
     graphStar = nx.MultiDiGraph() # Define new MultiDiGraph
     graphStar.add_nodes_from(graph.nodes.keys()) # Add all nodes from the original Graph
     graphStar.add_node('s0') # Add s0    

@@ -333,7 +333,7 @@ else:
                 # Catch infeasible models or models that are unbounded below
                 skipOptimization = False
                 try:
-                    g_Star, newGraph, flow = flowProblem.writeGStar(Graph, costFunctionIndex, maxAdditionalEdgeCount, geneCounter)
+                    g_Star, newGraph, flow = flowProblem.writeGStar(Graph, costFunctionIndex, maxAdditionalEdgeCount)
                     if g_Star == 0:
                         skipOptimization = True    
                 except nx.NetworkXUnfeasible or nx.NetworkXUnbounded:
